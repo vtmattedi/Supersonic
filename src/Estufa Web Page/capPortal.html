@@ -1,0 +1,186 @@
+<html>
+
+<head>
+    <style>
+        body {
+            background-color: aquamarine;
+        }
+
+        .bigdiv {
+            display: flex;
+            justify-content: center;
+            align-content: center;
+        }
+
+        .holddiv {
+            margin-top: 20px;
+            background-color: bisque;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-content: center;
+            width: 40%;
+            height: 800px;
+            border-radius: 100px;
+            text-align: center;
+        }
+
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            margin-left: 20px;
+            margin-right: 20px;
+            background-color: whitesmoke;
+
+
+        }
+
+        nav {
+            overflow: hidden;
+            overflow-y: scroll;
+            height: 200px;
+        }
+
+        td,
+        th {
+            border: 1px solid #dddddd;
+            text-align: center;
+            padding: 8px;
+        }
+
+        td:nth-child(1) {
+            text-align: left;
+        }
+
+        tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+
+        tr:hover {
+            background-color: #516ecc;
+            color: whitesmoke;
+        }
+
+        button {
+            margin-left: 30%;
+            margin-right: 30%;
+            margin-top: 5%;
+            width: 40%;
+            height: 10%;
+        }
+
+        tr.selected {
+            background-color: #04279c;
+            font-size: 16px;
+            color: whitesmoke;
+        }
+    </style>
+    <script>
+        const xmlHttp = new XMLHttpRequest();
+        var ssid_value = "";
+        function changepasswd(object) {
+            var new_type = "password";
+            if (object.checked)
+                new_type = "input"
+            document.getElementById("input_passwd").type = new_type;
+            var rows = document.getElementsByTagName("tr");
+            for (i = 0; i < rows.length; i++) {
+                var currentRow = rows[i];
+                var createClickHandler = function (thisrow) {
+                    return function () {
+                        var rows = document.getElementsByTagName("tr");
+                        for (i = 0; i < rows.length; i++) {
+                            rows[i].className = "";
+                            ssid_value = thisrow.getElementsByTagName("td")[0].innerText;
+                        }
+                        thisrow.className = "selected";
+                    };
+                };
+                currentRow.onclick = createClickHandler(currentRow);
+            }
+        }
+        window.onload = function () {
+            httpGetAsync("/Wifilist", ParseNewData)
+
+        }
+        function aba(aa) {
+            alert("hi");
+            console.log(aa);
+        }
+
+        function httpGetAsync(theUrl, callback) {
+            xmlHttp.onreadystatechange = function () {
+                if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+                    callback(xmlHttp.responseText);
+            }
+            xmlHttp.open("GET", theUrl, true); // true for asynchronous
+            xmlHttp.send();
+        }
+        function ParseNewData(incomeString) {
+
+            try {
+
+                for (var i = 0; i < incomeString.split(';').length; i++) {
+                    var _args = incomeString.split(';')[i].split(':');
+                    if (_args[0] == 'W') {
+                        newHeatRamp(_args[1], _args[2]);
+                    }
+                }
+
+
+            }
+            catch (err) {
+                console.log(err);
+            }
+
+        }
+
+        function RefreshWifiList(params) {
+            httpGetAsync("/Wifilist", ParseNewData);
+        }
+
+    </script>
+</head>
+
+<body>
+    <div class="bigdiv">
+        <div class="holddiv">
+            <label>Welcome to your ESP32 Deployment</label>
+            <label>Please select an WiFi network</label>
+            <div id="wifilistdiv">
+                <nav>
+                    <table>
+                        <tr>
+                            <th>Company</th>
+                            <th>Contact</th>
+                            <th>Country</th>
+                        </tr>
+                        <tr>
+                            <td>Alfreds Futterkiste</td>
+                            <td>Maria Anders</td>
+                            <td>Germany</td>
+                        </tr>
+                        <tr>
+                            <td>Centro comercial Moctezuma</td>
+                            <td>Francisco Chang</td>
+                            <td>Mexico</td>
+                        </tr>
+                        <tr>
+                            <td>Ernst Handel</td>
+                            <td>Roland Mendel</td>
+                            <td>Austria</td>
+                        </tr>
+
+                    </table>
+                </nav>
+
+                <div> <input type="password" id="input_passwd" name="ssidpassword" placeholder="Password"></input><input
+                        type="checkbox" name="Show Password" onchange="changepasswd(this)"></input><label>Show
+                        Password</label></div>
+                <button>Connect !</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

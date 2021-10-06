@@ -1,0 +1,452 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        input[type=number] {
+            width: 50px;
+            height: 30px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 2px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        label {
+            font-size: 18px;
+        }
+
+
+        .do {
+            margin-left: 15%;
+        }
+
+        .boxTitle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .Title {
+            display: block;
+            text-align: center;
+            line-height: 150%;
+            font-size: 50px;
+            width: 50%;
+            font-family: "Comic Sans MS";
+            padding-bottom: 10px;
+            color: #f52456;
+            text-shadow: 2px 2px 2px 2px white;
+            border: 5px solid;
+            border-radius: 100px 200px;
+            border-color: black;
+        }
+
+        .buttonBox {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            min-width: 60%;
+
+        }
+
+        .buttonBox .buttonBox_tn {
+            height: 50px;
+            border: 2px solid;
+            border-radius: 10px;
+            font-size: 20px;
+            min-width: 100px;
+            text-transform: uppercase;
+        }
+
+        .buttonBox .buttonBox_tn:hover:enabled {
+            background: black;
+            color: white;
+            border-radius: 100px;
+            width: 150px;
+            transition: all 0.5s linear;
+        }
+
+        .buttonBox .bt_sub:hover:enabled {
+            background: darkgreen;
+            color: white;
+            border-radius: 100px;
+            width: 150px;
+            transition: all 0.5s linear;
+        }
+
+        .h1_welcome {
+            text-align: center;
+            font: 24px Arial;
+        }
+
+        .infoBox {
+            display: flex;
+            justify-content: center;
+        }
+
+        .h1_dropdownBox {
+            font: 16px Arial;
+        }
+
+        .infoBox {
+            margin-left: 5%;
+        }
+
+        .infoBox .dropdownBox {
+            margin-left: 10px;
+            font: 20px Arial;
+            align-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .bigBox {
+            margin-left: 5%;
+            display: flex;
+            justify-content: space-evenly;
+        }
+
+        .inputBox {
+            border: 1px solid;
+            padding: 10px;
+        }
+
+        .preview_chart {
+            min-width: 50%;
+            width: 700px;
+            min-height: 400px
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 23px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 17px;
+            width: 17px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+        }
+
+        input:checked+.slider {
+            background-color: #2196F3;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+
+        input:checked+.slider:before {
+            -webkit-transform: translateX(17px);
+            -ms-transform: translateX(17px);
+            transform: translateX(17px);
+
+        }
+
+        /* Rounded sliders */
+        .slider.round {
+            border-radius: 23px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        .optionsBox
+        {
+            justify-content: space-between;
+        }
+
+    </style>
+    <script>
+        var currentSize = 0;
+        function loadtxt() {
+        }
+        function generateLabel(_size) {
+            var s = '<div id="div' + _size + '"><label>Temperature:</label> <input type="number" step="0.5" onchange="ManualDraw()" id="temp' + _size + '" name="temp' + _size + '" min="-55" max="85"> <label>&deg;C  </label> <label style="margin-left: 10px">Time:</label><input type="number" step="any" onchange="ManualDraw()" min="0" id="time' + _size + '" name="time' + _size + '"> <label>Mins</label><br><br></div>';
+            return s;
+        }
+        function sizeChanged(value) {
+            var newSize = parseInt(value);
+            // console.log(value, currentSize, value < currentSize, value > currentSize);
+            var s = "";
+            //  console.log('one');
+            if (newSize > currentSize) {
+                //console.log('two');
+                for (var i = 0; i < newSize; i++) {
+                    s = s + generateLabel(i);
+                }
+
+                var temp = [];
+                for (var i = 0; i < currentSize; i++) {
+                    try {
+                        temp[i * 2] = document.getElementById('temp' + i).value;
+                        temp[i * 2 + 1] = document.getElementById('time' + i).value;
+                    }
+                    catch (err) {
+                        temp[i * 2] = "";
+                        temp[i * 2 + 1] = "";
+                    }
+                }
+
+                document.getElementById('inputBox').innerHTML = s;
+
+                for (var i = 0; i < currentSize; i++) {
+                    document.getElementById('temp' + i).value = temp[i * 2];
+                    document.getElementById('time' + i).value = temp[i * 2 + 1];
+
+                }
+                currentSize = newSize;
+                document.getElementById('dropdownBox').value = newSize;
+            }
+            else if (newSize < currentSize) {
+                // console.log('three');
+                for (var i = currentSize - 1; i >= newSize; i--) {
+                    var c = document.getElementById('div' + i);
+                    c.parentNode.removeChild(c);
+                }
+                currentSize = newSize;
+                document.getElementById('dropdownBox').value = newSize;
+            }
+
+
+        }
+        function requestLast() {
+
+        }
+        function bodyLoadEvent() {
+
+            var options = "";
+            //generate dropdown options
+            for (var i = 1; i <= 20; i++) {
+                options += '<option value="' + i + '">' + i + '</option>';
+            }
+            document.getElementById('dropdownBox').innerHTML = options;
+            sizeChanged(5);
+
+        }
+        function preventEnter(event) {
+            var key = parseInt(event.keyCode);
+            if (key == 13) {
+                event.preventDefault();
+
+                console.log('suppressing Enter');
+            }
+
+        }
+        function go(where) {
+            window.location.assign(where);
+            //window.location.href(place);
+        }
+
+        window.onload = function () { bodyLoadEvent(); };
+
+    </script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        google.charts.load('current', { 'packages': ['corechart'] }); google.charts.setOnLoadCallback(drawChart); var dataview;
+        function drawChart() {
+            var data = new google.visualization.DataTable();
+            data.addColumn('date', 'Time');
+            data.addColumn('number', 'Temperature');
+            // data.addRow([new Date((Date.now())), 0]);
+            var _dropdownSize = parseInt(document.getElementById('dropdownBox').value);
+            var _trackTime = 0;
+            for (var i = 0; i < _dropdownSize; i++) {
+                var _temp = parseFloat(document.getElementById('temp' + i).value);
+                var _time = parseFloat(document.getElementById('time' + i).value);
+                console.log(_temp, _time);
+                if (!isNaN(_temp) && !isNaN(_time)) {
+                    data.addRow([new Date(Date.now() + 1000 * (_trackTime)), _temp]);
+                    data.addRow([new Date(Date.now() + 1000 * (_trackTime + (60 * _time))), _temp]);
+                    //data.addRow([_trackTime, _temp]);
+                    //  data.addRow([_trackTime + (60 * _time), _temp]);
+                    _trackTime = _trackTime + (60 * _time);
+                }
+            }
+            dataview = data;
+            var options = {
+                title: 'Preview',
+                backgroundColor: '#F0FFF0',
+                titleTextStyle: { fontName: 'Arial', fontSize: '30', bold: 'true' },
+                legend: 'none',
+                curveType: 'line', animation: { startup: true, easing: 'in' },
+                hAxis: { title: 'Time', format: 'HH:mm' },
+                colors: ['red'],
+                vAxes: {
+                    0: {
+                        logScale: false, maxValue: 35, minValue: 25, gridlines: { count: 5 }, title: 'Temp(\xB0C)', titleTextStyle: {
+                            color: 'black',
+                            fontName: 'Arial',
+                            fontSize: '20'
+                        }
+                    },
+
+                },
+                series: {
+                    0: { targetAxisIndex: 0 },
+                }
+            };
+            var date_formatter = new google.visualization.DateFormat({
+                pattern: "HH:mm:ss"
+            });
+            date_formatter.format(data, 0);
+            var chart = new google.visualization.LineChart(document.getElementById('preview_chart'));
+            chart.draw(data, options);
+        }
+        function ManualDraw() {
+            drawChart();
+        }
+        function addData(time, temp, hum) {
+            var data = new google.visualization.DataTable();
+            data = dataview;
+            data.addRow([new Date(1000 * (10800 + time)), temp, hum]);
+            if (data.getNumberOfRows() > 60) {
+                data.removeRow(0);
+            }
+            dataview = data;
+            var options = {
+                title: 'Live Data',
+                backgroundColor: '#F0FFF0',
+                titleTextStyle: { fontName: 'Arial', fontSize: '30', bold: 'true' },
+                legend: 'none',
+                curveType: 'function', animation: { startup: true, easing: 'in' },
+                hAxis: { title: 'Time(s)', format: 'mm:ss' },
+                colors: ['red', 'blue'],
+                vAxes: {
+                    0: {
+                        logScale: false, maxValue: 35, minValue: 25, gridlines: { count: 5 }, title: 'Temp(\xB0C)', titleTextStyle: {
+                            color: 'red',
+                            fontName: 'Arial',
+                            fontSize: '30'
+                        }
+                    },
+                    1: {
+                        logScale: false, maxValue: 100, minValue: 50, gridlines: { count: 10 }, title: 'Humidity(%)', fontName: 'Arial', titleTextStyle: {
+                            color: 'blue',
+                            fontName: 'Arial',
+                            fontSize: '25'
+                        }
+                    }
+                },
+                series: {
+                    0: { targetAxisIndex: 0 },
+                    1: { targetAxisIndex: 1 },
+                }
+            };
+            var date_formatter = new google.visualization.DateFormat({
+                pattern: "HH:mm:ss"
+            });
+            date_formatter.format(data, 0);
+            var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
+            chart.draw(data, options);
+        }
+    </script>
+</head>
+
+<body style="background-color: #F0FFF0;">
+    <title>Estufa</title>
+    <div class="boxTitle">
+        <label class="Title">Nova Rampa de Calor</label>
+    </div>
+    <div style="justify-content: center; margin-left:10%; margin-right:10%;">
+        <h2 class="h1_welcome">Bem vindo a p&aacutegina de configura&ccedil;&atildeo. Configure abaixo a rampa de calor
+            a ser executada.<br>Note que a atemperatura pode ser variada entre -125&deg;C e +85&deg;C por
+            limita&ccedil;ões do sensor</h2>
+    </div>
+
+    <form action="/do" id="doForm" method="GET" onkeypress="preventEnter(event)">
+        <div class="infoBox">
+            <h1 class="h1_dropdownBox">Selecione a quantidade de passos que deseja</h1>
+            <select name="steps" class="dropdownBox" id="dropdownBox" onchange="sizeChanged(this.value)">
+            </select>
+        </div>
+        <br>
+        <div class="bigBox">
+            <div class="inputBox" id="inputBox">
+            </div>
+            <div class="chartBox">
+                <div class="preview_chart" id="preview_chart">
+                </div>
+                <!-- <div style="margin-bottom:5px; margin-left:20px; flex-direction: row; justify-content: space-evenly; display: flex;"> -->
+
+                <div style="display: flex; flex-direction: row; justify-content: space-between">
+                    <div class="buttonBox">
+                        <input class="buttonBox_tn" type="button" value="Back" onclick="go('/')">
+                        <!-- <input class="buttonBox_tn" type="button" disabled value="Preview" onclick="ManualDrawChart()"> -->
+                        <input class="buttonBox_tn" type="button" value="Last" onclick="requestLast()">
+                        <input class="buttonBox_tn bt_sub" type="submit" value="Submit">
+
+                    </div>
+                    <div class="optionsBox" style="justify-content: space-between; display: flex; flex-direction: column;">
+                        <div >
+                            <div style="justify-content: space-between; display: flex;">
+                            <label style="margin-right: 2px">Nome do projeto: </label>
+                            <input type="text" name="pname" size="10px">
+                            </div>
+                            <br>
+                            <div style="justify-content: space-between; display: flex;">
+                                <label style="margin-right: 2px">
+                                    Esquentar antes de come&ccedil;ar:
+                                </label>
+                                <label class="switch">
+                                    <input type="checkbox" name="heatup">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <br>
+                            <div style="justify-content: space-between; display: flex;">
+                                <label style="margin-right: 10px">
+                                    Come&ccedil;ar ap&oacute;s Salvar:
+                                </label>
+                                <label class="switch">
+                                    <input type="checkbox" name="_start" checked on>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            </div>
+
+
+    </form>
+    <footer style="justify-content: center; display: flex;">
+        <p>
+            <i>Supersonic by MattediWorks&copy;</i>
+        </p>
+    </footer>
+</body>
+
+</html>

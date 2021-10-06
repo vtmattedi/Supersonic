@@ -1,0 +1,389 @@
+<html>
+
+<head>
+  <link href="Files.css" rel="stylesheet" type="text/css">
+  <link rel="apple-touch-icon" sizes="57x57" href="/Favicons/index/apple-icon-57x57.png">
+  <link rel="apple-touch-icon" sizes="60x60" href="/Favicons/index/apple-icon-60x60.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="/Favicons/index/apple-icon-72x72.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="/Favicons/index/apple-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="114x114" href="/Favicons/index/apple-icon-114x114.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/Favicons/index/apple-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="/Favicons/index/apple-icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/Favicons/index/apple-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/Favicons/index/apple-icon-180x180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/Favicons/index/android-icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/Favicons/index/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/Favicons/index/favicon-96x96.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/Favicons/index/favicon-16x16.png">
+  <meta name="msapplication-TileColor" content="#ffffff">
+  <meta name="msapplication-TileImage" content="/Favicons/index/ms-icon-144x144.png">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Glory:wght@100&family=Noto+Sans+JP:wght@100&display=swap"
+    rel="stylesheet">
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript" src="Graphs.js"></script>
+
+  <script>
+
+    const xmlHttp = new XMLHttpRequest();
+    RequestData("/fileslist");
+
+    var test = "files:test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,test.log 159.25,jolts.csv 0.06,;";
+    var use_relative_time_flag = false;
+    var stopLoadingAnimation = false;
+    var currentDiv = undefined;
+    var currentName = "";
+    var savedFileList = "";
+    var showAllFiles = false;
+    var incomeCSV = {
+      next = false,
+      title = ''
+    }
+
+    function RequestData(whichdata, loading) {
+      if (typeof whichdata !== 'string')
+        httpGetAsync("requpdate", ParseNewData);
+      else
+        httpGetAsync(whichdata, ParseNewData);
+
+    }
+    function httpGetAsync(theUrl, callback) {
+      xmlHttp.onreadystatechange = function () {
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+          callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", theUrl, true); // true for asynchronous
+      xmlHttp.send();
+    }
+    function ParseNewData(incomeString) {
+      try {
+
+        for (var i = 0; i < incomeString.split(';').length; i++) {
+          var _args = incomeString.split(';')[i].split(':');
+          if (_args[0] == "files") {
+            savedFileList = incomeString.split(';')[i];
+            getFiles(_args[1]);
+          }
+          if (_args[0] == 'error') {
+            alert(_args[1]);
+          }
+          // if (_args[0] == "title") {
+          //   GraphOptions.GraphName = _args[1];
+          // }
+          // if (_args[0] == "CSV") {
+          //   parseCSV(incomeString.split(';')[i]);
+          // }
+          if (incomeCSV.next)
+          {
+            parseCSV(incomeString)
+            incomeCSV.false;
+          }
+          if (_args[0] == 'go') {
+            go(_args[1]);
+          }
+        }
+
+
+      }
+      catch (err) {
+        console.log(err);
+      }
+      SetLoading(false);
+    }
+
+    function getFiles(filesString) {
+      var FilesCSV = [,];
+      var CSVIndex = 0;
+      var _args = filesString.split(',');
+      for (var i = 0; i < _args.length; i++) {
+        _args2 = _args[i].split('=');
+        if (_args2[0] !== "" && _args2[1] !== "") {
+
+          if (_args2[0].endsWith(".csv")) {
+            FilesCSV[CSVIndex] = _args2;
+            CSVIndex++;
+          }
+          else {
+            if (showAllFiles === true) {
+              FilesCSV[CSVIndex] = _args2;
+              CSVIndex++;
+            }
+
+          }
+
+        }
+      }
+      genFileList(FilesCSV, "CSV");
+    }
+
+    function genFileList(files, what) {
+      if (typeof (files[0]) !== 'undefined') {
+
+        //  var s = '<div class="FilesDiv"><div class="FilesLine HeaderLine"><label>File: </label><label>Size:&nbsp;&nbsp;</label></div><label>delete</label></div>';
+        var s = "";
+        for (let i = 0; i < files.length; i++) {
+          s += genLines(files[i][0], files[i][1]);
+        }
+
+        document.getElementById("FilesList" + what).innerHTML = s;
+      }
+      else
+        document.getElementById("FilesList" + what).innerHTML = "";
+    }
+
+    function genLines(name, size) {
+      divString = '<div class="FilesDiv"><div class="FilesLine" onclick="selectDiv(this, \'' + name + '\')"><a href="/Logs/' + name + '" download>' + name + '</a><label>' + size + ' kb</label></div>';
+      divString = divString + '</div>';
+      return divString;
+    }
+    function go(where) {
+      window.location.assign(where);
+      //window.location.href(place);
+    }
+
+    function deleteFile() {
+
+      if (currentName === "")
+        return;
+
+      if (confirm("Tem certeza que deseja deletar o arquivo: " + currentName + " ?")) {
+        var url = "/deleteFile?fileName=" + currentName;
+        RequestData(url);
+      }
+    }
+
+    window.onload = function () {
+      GraphOptions.resetDataTable();
+      drawChart();
+    }
+
+    function changeGraphDisplay() {
+
+      if (document.getElementById("ramp_chart").style.display != "none") {
+        document.getElementById("ramp_chart").style.display = "none";
+        document.getElementById("graph-options").value = "Show Graph"
+      }
+      else {
+        document.getElementById("ramp_chart").style.display = "block";
+        document.getElementById("graph-options").value = "Hide Graph"
+        drawChart();
+      }
+    }
+
+    function CustomAddData(_newData, j) {
+      try {
+        var data = _newData.split(',');
+
+        if (typeof data === 'undefined')
+          return;
+        var newRow = [];
+        if (use_relative_time_flag)
+          newRow[0] = new Date(parseInt(data[1]) * 1000);
+        else
+          newRow[0] = new Date(parseInt(data[0]) * 1000);
+
+        newRow[1] = parseFloat(data[2]);
+        newRow[2] = parseFloat(data[3])
+        newRow[3] = null;
+        newRow[4] = null;
+        if (data[6] != '\r') {
+          console.log(j, newRow[0], data[6])
+          if (data[6] === "heat ramp finished") {
+            newRow[3] = "F";
+            newRow[4] = "Final: " + getFormattedTime(newRow[0]);
+          }
+          else if (data[6] === "heat ramp started\r") {
+            newRow[3] = "S";
+            newRow[4] = "Começo: " + getFormattedTime(newRow[0]);
+          }
+          else {
+            console.log(newRow[0], j);
+
+            newRow[3] = data[6].split(':')[1];
+            newRow[4] = "Passo " + data[6].split(':')[1] + ": " + getFormattedTime(newRow[0]);
+          }
+
+        }
+
+        GraphOptions.DataTable.addRow(newRow);
+
+
+
+
+      } catch (e) {
+        console.log(e);
+      }
+    }
+    function getFormattedTime(date) {
+      try {
+        var formattedTime = "";
+        var h = date.getHours();
+        var m = date.getMinutes();
+
+        if (h < 10)
+          formattedTime += "0";
+        formattedTime += h;
+        formattedTime += ":"
+        if (m < 10)
+          formattedTime += "0";
+        formattedTime += m
+
+        return formattedTime;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function parseCSV(csvFile) {
+      var data = new google.visualization.DataTable();
+      data.addColumn('date', 'Time');
+      data.addColumn('number', 'Temperature');
+      data.addColumn('number', 'Set Temperature');
+      data.addColumn({ type: 'string', role: 'annotation' });
+      data.addColumn({ type: 'string', role: 'annotationText' });
+      GraphOptions.DataTable = data;
+      var line = 0;
+      var rows = csvFile.split('\n');
+      for (var i = 1; i < rows.length; i++) {
+        CustomAddData(rows[i], i);
+      }
+      drawChart();
+    }
+
+    function loadFile() {
+      if (currentName != "") {
+        if (!currentName.endsWith(".csv")) {
+          alert("Select a CSV file to view.\nyou can download a file by clicking on its name.");
+          return;
+        }
+        GraphOptions.title = currentName.trim('.csv');
+        var url = "/csv?fileName=" + currentName;
+        incomeCSV.next = true;
+        RequestData(url);
+      }
+    }
+    function selectDiv(object, name) {
+      if (typeof (currentDiv) !== 'undefined')
+        currentDiv.className = "FilesLine";
+
+      if (typeof (object) !== 'undefined') {
+        object.className = "FilesLine LineSelected";
+        document.getElementById('buttonDelete').removeAttribute("disabled");
+        document.getElementById('buttonLoad').removeAttribute("disabled");
+      }
+      else {
+        document.getElementById('buttonDelete').setAttribute("disabled", "disabled");
+        document.getElementById('buttonLoad').setAttribute("disabled", "disabled");
+
+      }
+
+      currentDiv = object;
+      currentName = name;
+    }
+
+    function deleteAllFiles() {
+      if (confirm("This will delete all heat ramp logs. Are you sure?")) {
+        var url = "/deleteAllFiles";
+        RequestData(url);
+      }
+
+
+    }
+
+
+    function SetLoading(param) {
+
+      if (typeof (param) === 'boolean') {
+        if (param) {
+          document.getElementById("bottombuttons").style.display = "none";
+          document.getElementById("bottomloading").style.display = "flex";
+          SetLoading(0);
+
+        }
+        else {
+          document.getElementById("bottombuttons").style.display = "flex";
+          document.getElementById("bottomloading").style.display = "none";
+          stopLoadingAnimation = true;
+        }
+      }
+      else if (typeof (param) === 'number') {
+        var text = "<h1>Loading";
+        for (var i = 0; i < param; i++) {
+          text += ".";
+        }
+        text += "</h1><h3>(sometimes it takes a while because the microcontroller have to read off the SD disk)</h3>";
+        param++;
+        if (param >= 4) {
+          param = 0;
+        }
+        document.getElementById("bottomloading").innerHTML = text;
+        if (stopLoadingAnimation) {
+          stopLoadingAnimation = false;
+        }
+        else {
+          setTimeout(() => { SetLoading(param) }, 500);
+        }
+
+      }
+
+    }
+    function ChangeShowAllFilesFlag(button) {
+      showAllFiles = !showAllFiles;
+      if (showAllFiles)
+        button.innerHTML = "Show CSV Files";
+      else
+        button.innerHTML = "Show All Files";
+
+      ParseNewData(savedFileList);
+    }
+  </script>
+</head>
+
+<body>
+  <title>Estufa</title>
+  <div style="display: flex; justify-content: space-evenly;">
+    <h1 class="title">Files Available:</h1>
+  </div>
+
+  <div style="display: flex; justify-content: space-evenly; max-height: 60%;">
+    <div id="ramp_chart" style="min-width: 50%; height: fill;"></div>
+    <div>
+      <div style=" border: brown 1px solid; min-height: 400px;">
+        <div style="display: flex; justify-content: space-evenly;">
+          <h1>Ramp logs</h1>
+        </div>
+        <div class="FilesHeader">
+          <div style="display:flex;  justify-content: space-between; width: var(--files_size);"
+            onclick="selectDiv(undefined,'')"><label>File: </label><label>Size:&nbsp;&nbsp;</label></div>
+        </div>
+        <div id="FilesListCSV" class="FilesList">
+        </div>
+      </div>
+      <div class="buttonBoxFiles"
+        style="width: var( --files_size);justify-content: space-evenly; margin: auto;margin-top: 5px; display: flex;">
+        <button id="buttonLoad" class="buttonFiles buttonLoad" disabled onclick="loadFile()">Load</button>
+        <button id="buttonShowAll" class=" buttonShowAll" onclick="ChangeShowAllFilesFlag(this)">Show All Files</button>
+        <button id="buttonDelete" class="buttonFiles buttonDelete" disabled onclick="deleteFile()">Delete</button>
+      </div>
+    </div>
+  </div>
+  <br>
+  <br>
+  <div style="display: flex; flex-direction: row; justify-content: space-between; margin: auto; margin-top: 20px;">
+    <div class="buttonBox" id="bottombuttons">
+      <input id="graph-options" class="buttonBox_tn" type="button" value="Hide Graph" onclick="changeGraphDisplay()">
+      <input class="buttonBox_tn" type="button" value="Back" onclick="go('/')">
+      <input class="buttonBox_tn" type="button" value="Reload" onclick="go('/Files.html')">
+      <input class="buttonBox_tn deleteAll" type="button" value="Delete all" onclick="deleteAllFiles()">
+    </div>
+    <div class="buttonBox" id="bottomloading" style="display: none; flex-direction: column;">
+      <h1>Loading</h1>
+      <h2>(sometimes it takes a while because the microcontroller have to read off the SD disk)</h2>
+    </div>
+  </div>
+
+</body>
+
+</html>

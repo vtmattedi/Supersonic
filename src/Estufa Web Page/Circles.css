@@ -1,0 +1,72 @@
+:root{
+    --circ_box_size: 200px;
+}
+.circle_box {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-align-items: center;
+    align-items: center;
+    
+}
+
+    .circle_box .circle_Pbar {
+        left: 0;
+        width: 150px;
+        height: 150px;
+        position: relative;
+        align-items: center;
+    }
+
+        .circle_box .circle_Pbar svg {
+            width: 150px;
+            height: 150px;
+            position: relative;
+        }
+
+            .circle_box .circle_Pbar svg circle {
+                width: 150px;
+                height: 150px;
+                fill: none;
+                stroke-width: 10px;
+                stroke-linecap: round;
+                stroke-dasharray: 440;
+                stroke-dashoffset: 440;
+                transform: translate(5px, 5px);
+            }
+
+                .circle_box .circle_Pbar svg circle:nth-child(1) {
+                    stroke-dashoffset: 0;
+                    
+                }
+
+        .circle_box .circle_Pbar .circle_prog {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+            .circle_box .circle_Pbar .circle_prog h2 {
+                font-size: 60px;
+            }
+
+                .circle_box .circle_Pbar .circle_prog h2 span {
+                    font-size: 30px;
+                }
+
+    .circle_box .legend {
+        top: -7.5%;
+        font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+        position: absolute;
+        font-size: 20px;
+    }
+
