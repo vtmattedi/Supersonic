@@ -5,8 +5,8 @@ Supersonic is a ESP32 software for temperature control of external components wi
 
 ## Supported Temperature Sensors:
 
--Digital Sensors:
+-Digital Sensors:  
     DS18b20 family
 
--NTC Sensors:
----any
+-NTC Sensors:  
+    any
