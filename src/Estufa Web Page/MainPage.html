@@ -1,0 +1,160 @@
+﻿<html>
+
+<head>
+    <link href="Common.css" rel="stylesheet" type="text/css">
+    <link rel="apple-touch-icon" sizes="57x57" href="/Favicons/index/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/Favicons/index/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/Favicons/index/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/Favicons/index/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/Favicons/index/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/Favicons/index/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/Favicons/index/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/Favicons/index/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/Favicons/index/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/Favicons/index/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/Favicons/index/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/Favicons/index/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/Favicons/index/favicon-16x16.png">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/Favicons/index/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js">
+    </script>
+    <script type="text/javascript" src="CommonScript.js"></script>
+
+</head>
+
+<body>
+    <h1>Estufa do Laboratorio</h1>
+    <div id="esp_connected">
+        <div class="status_div"
+            style="display:flex; justify-content: space-around; margin-right: 10%; margin-left: 10%;">
+            <div>
+                <Label>Current State: </Label>
+                <Label id="stateLabel"> Unknown </Label>
+            </div>
+            <div>
+                <Label id="timeLabel"
+                    style="font-family:'Courier New', Courier, monospace; font-size: 30px; border: 1px solid black; border-radius: 15px; padding: 4px; background-color: cornflowerblue;">
+                </Label>
+            </div>
+            <div class="WorkingState" id="WorkingState"
+                style="display: flex; justify-content: space-between; width: 40%;">
+                <div>
+                    <!-- <Label>Remaining Time: </Label> -->
+                    <Label id="remainingTimeLabel"
+                        style="font-family:'Courier New', Courier, monospace; font-size: 30px; border: 1px solid black; border-radius: 15px; padding: 4px; background-color: darkred;"></Label>
+                </div>
+                <div>
+                    <Label>Current Step: </Label>
+                    <Label id="currentStepsLabel"></Label>
+                </div>
+            </div>
+        </div>
+        <div style="width: 100%; height:500px; align-items: center; justify-items: center; display: flex;">
+            <div style="width: 10%"></div>
+            <div id="ramp_chart" style="width:70%;height:500px; position: relative; display: flex;"></div>
+            <div id="boxSide" style="width: 20%;">
+                <div id="circle_1"></div>
+                <div id="circle_2"></div>
+            </div>
+            <div></div><br>
+        </div>
+        <div class="GraphOptionsBox">
+            <div style="align-content: center; align-items: center; display: flex; flex-direction: row;"> <label
+                    style="font-family: Helvetica, sans-serif; font-size: 16; margin-right: 10px;">
+                    Show Heat Ramp:
+                </label>
+                <label class="switch">
+                    <input type="checkbox" checked on onchange="changeDrawHeatRamp(this)" id="DrawHeatRampSlider">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div
+                style="flex-direction: row; display: none; align-items: center; font-family: Helvetica, sans-serif; font-size: 16; margin-right: 10px;">
+                <label style="margin-right: 10px;">
+                    Set Time Span
+                </label>
+                <select class="dropdownBox" style="width: 80px; height: 20px;" id="TimeSpanSelect"
+                    style="font-family: 'Courier New', Courier, monospace;" onchange="changeTimeSpan(this)">
+                    <option value="-1">All</option>
+                    <option value="1">1 Min</option>
+                    <option value="5">5 Min</option>
+                    <option value="5">15 Min</option>
+                    <option value="30">30 Min</option>
+                    <option value="60">1 Hour</option>
+                    <option value="120">2 Hour</option>
+                </select>
+            </div>
+            <div
+                style="flex-direction: row; display: flex; align-items: center; font-family: Helvetica, sans-serif; font-size: 16; margin-right: 10px;">
+                <label style="margin-right: 10px;">
+                    Graph Mode:
+                </label>
+                <select class="dropdownBox" style="width: 80px; height: 30px;" id="GraphOptionSelect"
+                    style="font-family: 'Courier New', Courier, monospace, 20px;" onchange="changeGraphMode(this)">
+                    <option style=" font-size: 20px;" value="function">Function</option> <span id="btnStop_tooltip"
+                        class="button tooltiptext">Tooltip text</span>
+                    <option style=" font-size: 20px;" value="line">Line</option>
+                </select>
+            </div>
+
+            <div style="align-content: center; align-items: center; display: flex; flex-direction: row;"> <label
+                    style="font-family: Helvetica, sans-serif; font-size: 16; margin-right: 10px;">
+                    Show Future:
+                </label>
+                <label class="switch">
+                    <input type="checkbox" checked on onchange="changeShowFuture(this)" id="ShowFutureSlider">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <button onclick="handleHoldButton()" id='btnHold'>Hold
+            </button>
+        </div>
+        <div class="buttonLine">
+            <button onclick="go('Files.html')" class="button">
+                <div> Files</div>
+                <span class="tooltiptext">Check current files and past ramps</span>
+            </button>
+            <button onclick="go('Settings.html')" class="button"> Settings
+            </button>
+            <button id="btnStop" onclick="stopbutton()" class="button buttonStop">
+                <div id="btnStop_text">STOP</div>
+                <span id="btnStop_tooltip" class="tooltiptext" hidden>Tooltip text</span>
+            </button>
+            <button onclick="go('doPage.html')" class="button" id='btnNewRamp'>
+                <div id="btnNewRamp_text">New Ramp</div>
+                <span id="btnNewRamp_tooltip" class="tooltiptext" hidden>Tooltip text</span>
+            </button>
+
+        </div>
+
+        <div class="offline-div" id="offline-div">
+            <div class="offline-div-table">
+                <table id=offline-table>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="esp_not_connected" style='display: none; min-height: 70%;'>
+
+        <div style="display: flex; margin: auto; justify-content: center;">
+            <label style="font-size: 24px;">The connection with the ESP microcontroller was lost</label>
+        </div>
+        <div style="display: flex; margin: auto; justify-content: center; margin-top: 20px;">
+
+            <label style="font-size: 20px; ">trying to reconnect</label>
+            <span id="reconnect-animation" style="width: 10px;font-size: 20px; ">...</span>
+
+        </div>
+    </div>
+
+    <footer>
+        <p class="footer"><i>Supersonic by MattediWorks&copy;</i></p>
+    </footer>
+
+</body>
+
+</html>

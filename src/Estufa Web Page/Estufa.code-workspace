@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "Estufa_WebPage",
+			"path": "..\\.."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"system_error": "cpp"
+		}
+	}
+}

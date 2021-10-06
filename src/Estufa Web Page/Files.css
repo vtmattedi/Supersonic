@@ -1,0 +1,160 @@
+@charset "utf-8";
+
+:root{
+    --files_size: 350px;
+}
+body {
+    background-color: #F0FFF0;
+}
+.FilesList{
+    display: absolute;
+    width: 400px;
+    flex-direction: column;
+    justify-content: center;
+    margin: auto;
+    overflow: auto;
+    max-height: 80%;
+
+
+    /* border: black 1px solid; */
+}
+    
+.FilesLine{
+    display: flex;
+    justify-content: space-between;
+    font-size:  1.2em;
+    width: var(--files_size);
+
+}
+.LineSelected
+{
+    background-color: rgb(62, 156, 152);
+}
+.FilesHeader
+{
+    display: flex;
+    justify-content: space-evenly;
+    margin-right: 9px;
+    font-size:  1.2em;
+    width: fill;
+}
+
+.FilesDiv{
+    display:flex; justify-content: space-evenly;
+}
+a{
+    cursor: pointer;
+    text-decoration: none;
+}
+a:hover{
+    text-decoration: underline;
+}
+.buttonBox {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    min-width: 25%;
+    margin: auto;
+    width: 80%;
+
+}
+
+.buttonBox .buttonBox_tn {
+    height: 50px;
+    border: 2px solid;
+    border-radius: 10px;
+    font-size: 20px;
+    min-width: 100px;
+    text-transform: uppercase;
+}
+
+.buttonBox_tn:hover:enabled {
+    background: rgb(35, 32, 223);
+    color: white;
+    border-radius: 100px;
+    width: 150px;
+    transition: all 0.5s linear;
+}
+.deleteAll:hover:enabled
+{
+    background: rgb(146, 12, 12);
+    color: white;
+    border-radius: 100px;
+    width: 150px;
+    transition: all 0.5s linear;
+}
+.buttonFiles
+{
+    color: rgb(68, 66, 66);
+    background: inherit;
+    border-radius: 5px;
+    height: 30px;
+    min-width: 100px;
+    font-size: 20px;
+}
+.buttonShowAll 
+{
+    color: rgb(0, 0, 0);
+    background: inherit;
+    border-radius: 5px;
+    height: 30px;
+    min-width: 100px;
+    font-size: 16px;
+}
+.buttonDelete:enabled:hover
+{
+    background: rgb(163, 1, 1);
+    color: white;
+    transition: all 0.5s linear;
+    text-decoration: underline;
+    cursor: pointer;
+   
+}
+.buttonLoad:enabled:hover
+{
+    background: rgb(140, 240, 235);
+    color: white;
+    transition: all 0.5s linear;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.title{
+    color:brown;
+    text-decoration: underline;
+    font-family: 'Glory', sans-serif;
+    font-size: 3.75em;
+}
+
+h1{
+    font-family: 'Noto Sans JP', sans-serif;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 150%;
+    left: 50%;
+    margin-left: -60px;
+  }
+  
+  .tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: black transparent transparent transparent;
+  }
+  
+  .tooltip:hover .tooltiptext {
+    visibility: visible;
+  }

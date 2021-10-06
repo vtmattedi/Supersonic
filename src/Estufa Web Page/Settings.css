@@ -1,0 +1,149 @@
+@charset "utf-8";
+:root{
+    --TextWidth: 200px;
+    --TextHeight: 25px;
+    --BoxSize: 400px;
+}
+body {
+    background-color: #F0FFF0;
+    flex-wrap: wrap;
+}
+ .circle_box
+{
+    transform: scale(0.65,0.65);
+    width: 130px !important;
+    height: 130px !important;
+}
+input[type=number] {
+    width: 50px;
+    height: 30px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 2px;
+    font-size: 18px;
+    text-align: center;
+}
+input
+{
+    text-align: right;
+    width: var(--TextWidth);
+    height: var(--TextHeight);
+  
+}
+
+label {
+    font-size: 18px;
+}
+.settings-title
+{
+    justify-self: center;
+    align-self: center;
+    margin: auto;
+    color: indianred;
+    font-family: 'Glory', sans-serif;
+    font-size: 5rem;
+    text-decoration: underline;
+
+}
+
+.div-pin{
+    width: 200px !important;
+    display: flex;
+    justify-content: space-between;
+}
+
+.dropdownBox{
+    width: var(--TextWidth);
+    height: var(--TextHeight);
+    font-size: 16px;
+    
+}
+.dropDown2{
+    width: calc(var(--TextWidth)/6px);
+    height: var(--TextHeight);
+    font-size: 16px;
+    
+}
+
+.wholepage
+{
+    display: flex;
+    flex-direction:unset;
+    flex-wrap: wrap;
+}
+
+.box-title 
+{
+    font-weight: bold;
+    text-transform: uppercase;
+    display: flex;
+    background-color: wheat;
+    width: var(--BoxSize);
+    justify-content: center;
+    
+}
+.box-title label
+{
+    font-size: 24px;
+}
+
+.box-div
+{
+    display: flex;
+    margin: auto;
+    border: peru solid 1px; 
+    width: var(--BoxSize); 
+    flex-direction: column;
+    margin: auto;
+    justify-content: center;
+}
+.basic-div
+{
+    margin: 2.5px;
+    display: flex;
+    align-items: center;
+}
+.basic-three
+{
+    justify-content: space-between;
+}
+.basic-two
+{
+    justify-content: space-between;
+}
+.basic-one
+{
+    justify-content: center;
+}
+.box-button1
+{
+    height: 1.5rem;
+ 
+    width: calc(var(--BoxSize)/6);
+    background: inherit;
+    border-radius: 10px;
+    border: 2px solid;
+
+}
+.box-button1:hover
+{
+    background-color: darkcyan;
+    color: white;
+    border: 2px solid;
+}
+
+.item-label
+{
+    font-size: 18px;
+    text-decoration: underline;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: bold;
+}
+.desc-label
+{
+    text-align: center;
+    font-size: 14px;
+    font-family: 'Bona Nova', serif;
+}
+
+                    
