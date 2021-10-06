@@ -24,7 +24,7 @@
 #include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\.pio\libdeps\esp32dev\AsyncTCP-esphome\src\AsyncTCP.h>
 #include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\.pio\libdeps\esp32dev\ESPAsyncWebServer-esphome\src\ESPAsyncWebServer.h>
 #include <DNSServer.h>
-#include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\include\SD\SDCard.h>
+//#include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\include\SD\SDCard.h>
 #include "SD_MMC.h"
 #include "esp_task_wdt.h"
 
@@ -2714,6 +2714,7 @@ void setup()
     Serial.println("ms");    
 
     SysInfo.print(true);
+    
 }
 
 void loop()
