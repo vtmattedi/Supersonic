@@ -36,11 +36,11 @@
 <body>
 
   <title>Estufa</title>
-  <div style="display: flex; margin-top: 10px; flex-direction: row; justify-content: space-around; flex-wrap: wrap;">
-    <div style="border: peru solid 1px; display: flex;">
+  <div style="display: flex; margin-top: 10px; flex-direction: row; justify-content: space-around; flex-wrap: hidden; ">
+    <div style="display: flex; min-width: 50%; max-width: stretch;">
       <h1 class="settings-title">Settings</h1>
     </div>
-    <div style="display: flex; margin: auto; border: peru solid 1px; width: min-content;">
+    <div style="display: flex; margin: auto; width: min-content;">
       <div id="circle_1"></div>
       <div id="circle_2"></div>
       <div id="circle_3"></div>
@@ -48,219 +48,328 @@
     </div>
   </div>
 
-  <!-- Wifi Settings -->
-  <div class="box-div">
-    <div class="box-title">
-      <label>Wifi Settings</label>
-    </div>
-
-    <div class="basic-div basic-two">
-      <label class="item-label">Use Custom SSID</label>
-      <label class="switch"><input type="checkbox" name="Custom SSID" id="wifi_custom_ssid"
-          onchange="tooglewificustomssid(this.checked)"><span class="slider round"></label>
-      </span>
-    </div>
-
-    <div class="basic-div"><label class="desc-label">Enable this to try to connect to a hidden SSID</label></div>
-
-    <div class="basic-div basic-three" id="wifi_ssid_list_div">
-      <label class="item-label">Wifi SSID List:</label>
-      <select name="WifiSSID" class="dropdownBox" id="wifi_dropdownBox"></select>
-      <div class="basic-one"> <button class="box-button1" onclick="RequestData('/reqwifisearch')">Refresh</button>
-      </div>
-    </div>
-
-    <div class="basic-div basic-three" id="wifi_custom_ssid_div">
-      <label class="item-label">Wifi SSID:</label>
-      <input id="wifi_ssid" style="margin-right: 72px;"></input>
-    </div>
-    <div class="basic-div basic-two">
-      <label class="item-label">Wifi Password:</label>
-      <input type="password" id="WIFI_PASSWORD" onchange="handleSettingsChanges(this,'wifi')" />
-      <div class="basic-one"> <button class="box-button1">Connect</button></div>
-    </div>
-    <div class="basic-div basic-two">
-      <label class="item-label">Use Static IP:</label>
-      <label class="switch"><input type="checkbox" id="use_static_ip"onchange="enable('ip_address', this.checked); handleSettingsChanges(this,'wifi','supressdraw')"><span class="slider round"></span></label>  
-    </div>
-    <div class="basic-div basic-two">
-      <label class="item-label">IP:</label>
-      <input class="input-wifi" id="ip_address"/>
-    </div>
-
-
-    <div class="basic-div basic-two"><label class="item-label">AP SSID:</label><input class="dropdownBox"
-        id="ap_ssid"></input></div>
-    <div class="basic-div basic-two"><label class="item-label">AP Password:</label><input type="password"
-        class="dropdownBox" id="WIFI_AP_PASSWORD"></input></div>
-  </div>
-  <!-- General Settings -->
-  <div class="box-div">
-    <div class="box-Title">
-      <label>General</label>
-    </div>
-    <div class="basic-div basic-two"><label class="item-label">Host name:</label><input class="input-wifi" /></div>
-
-    <div class="basic-div basic-two"><label>Enable Cache</label>
-      <label class="switch"><input type="checkbox" name="Cache"><span class="slider round"></label>
-      </span>
-    </div>
-    <div class="basic-div basic-two"><label>Continuos Log</label>
-      <label class="switch"><input type="checkbox" name="Cache"><span class="slider round"></label>
-      </span>
-    </div>
-
-    <div class="basic-div">
-      <div class="basic-div basic-two"><label class="item-label">Refresh rate</label><input class="input-wifi"
-          type="number" /></div><label>Secs.</label>
-    </div>
-    <button>change password</button>
-    <div class="basic-div basic-two"><label class="item-label">Old Password:</label><input class="input-wifi" /></div>
-    <div class="basic-div basic-two"><label class="item-label">New Password:</label><input class="input-wifi" /></div>
-    <div class="basic-div basic-two"><label class="item-label">Confirm:</label><input class="input-wifi" /></div>
-
-
-  </div>
-  <!-- Backup Settings -->
-  <div class="box-div">
-    <div class="box-title">
-      <label>Backup</label>
-    </div>
-    <div class="basic-div div-wifi"><label>Enable Backup</label>
-      <label class="switch"><input type="checkbox" name="Cache"><span class="slider round"></label>
-      </span>
-    </div>
-
-    <div class="basic-div">
-      <div class="basic-div div-wifi"><label class="item-label">Backup every: </label><input class="input-wifi"
-          type="number" /></div><label>Days.</label>
-    </div>
-
-    <div class="basic-div">
-      <div class="basic-div div-wifi"><label class="item-label">Last Backup</label></div><label>Never</label>
-    </div>
-
-    <button>Backup Now</button>
-  </div>
-
-  <!--  Upload Settings -->
-  <div class="box-div">
-    <div class="box-title">
-      <label>Auto Upload Results</label>
-    </div>
-    <div class="basic-div div-wifi"><label>Enable Auto Upload</label>
-      <label class="switch"><input type="checkbox" name="Cache"><span class="slider round"></label>
-      </span>
-    </div>
-
-    <div class="basic-div">
-      <div class="basic-div div-wifi"><label class="item-label">Upload Monitor Log every: </label><input
-          class="input-wifi" type="number" /></div><label>Days.</label>
-    </div>
-    <div class="basic-div div-wifi"><label>Enable Upload Results:</label>
-      <label class="switch"><input type="checkbox" name="Cache"><span class="slider round"></label>
-      </span>
-    </div>
-
-    <div class="basic-div div-wifi"><label class="item-label">Service:</label><select name="WifiSSID"
-        class="dropdownBox" id="wifi_dropdownBox">
-        <option value="0">Gmail</option>
-        <option value="1">Google Drive</option>
-      </select></div>
-    <div class="basic-div div-wifi"><label class="item-label">Login:</label><input></input></div>
-    <div class="basic-div div-wifi"><label class="item-label">Password:</label><input class="input-wifi"
-        type="password" /></div>
-
-  </div>
-
-  <!--  Files Settings -->
-  <div class="box-div">
-    <div class="box-title">
-      <label>Files Settings</label>
-    </div>
-    <div class="basic-div">
-      <label>Files Settings</label>
-    </div>
-    <button>Upload File to ESP</button>
-    <button>Reset ESP</button>
-
-  </div>
-
-  <!-- Sensor Settings -->
-  <div class="box-div">
-    <div class="box-title">
-      <label>Sensor Settings</label>
-    </div>
-    <div class="basic-div">
-      <div style="display: flex; width: inherit; justify-content: space-between;"><label class="label-pin">Sensor
-          Type:</label> <select class="dropdownBox">
-          <option value="0">DS18B20</option>
-          <option value="2">NTC Thermopar</option>
-        </select></div>
-    </div>
-    <!-- NTC Thermopar options -->
+  <div style="display: flex; justify-content: space-evenly; flex-wrap: wrap;">
     <div>
-      <div class="basic-div"><label class="label-pin">Thermopar Resistance:</label> <input id="relay_pin" type="number"
-          min=0 max=39 step="1" class="input-pin" /></div>
-      <div class="basic-div"><label class="label-pin">Thermopar Beta Coeff:</label> <input id="relay_pin" type="number"
-          min=0 max=39 step="1" class="input-pin" /></div>
-      <div class="basic-div"><label class="label-pin">Thermopar Nominal Temp: </label> <input id="relay_pin"
-          type="number" min=0 max=39 step="1" class="input-pin" /></div>
-    </div>
-    <div class="basic-div basic-two"><label>Use Correction polynome for ADC values:</label>
-      <label class="switch"><input type="checkbox" name="Cache"><span class="slider round"></label>
-      </span>
-    </div>
-    <div class="basic-div basic-two"><label class="item-label">Correction polynome:</label><input class="dropdownBox"
-        id="wifi_dropdownBox"></input></div>
-
-
-    <div class="basic-div">
-      <div style="display: flex; width: inherit; justify-content: space-between;"><label
-          class="label-pin">Resolution:</label> <input id="TEMPERATURE_PRECISION" type="number" min=9 max=12 step="1"
-          class="input-pin" value="9" /></div><label style="width: 30px;">bits</label>
-    </div>
-    <div class="basic-div">
-      <div style="display: flex; width: inherit; justify-content: space-between;"><label
-          class="label-pin">Tolerance:</label> <input id="tolerance" type="number" step="0.5" class="input-pin"
-          value="0" /></div><label style="width: 30px;">&deg;C</label>
-    </div>
-    <div>
-      <label>Do note that acording to the <a href="https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf"
-          target="_blank" rel="noopener noreferrer">datasheet</a>, the ds18b20 have 0.5&deg;C of true precision</label>
-      <button onclick="showCalibrationDiv(true)">Calibrate</button>
-    </div>
-
-
-    <!-- Calibrations -->
-    <div id="cal_div">
-      <div style="display:flex; align-content: center;">
-        <label>Value on sensor:</label>
-        <div>
-          <div id="cal_raw_sensor"></div>
+      <!-- Wifi Settings -->
+      <div class="box-div">
+        <div class="box-title">
+          <label>Wifi Settings</label>
         </div>
-        <div id="cal_sensor"></div>
+
+        <div class="basic-div basic-two">
+          <label class="item-label">Use Custom SSID</label>
+          <label class="switch"><input type="checkbox" name="Custom SSID" id="wifi_custom_ssid"
+              onchange="togglediv('wifi_ssid',this.checked)"><span class="slider round"></label>
+          </span>
+        </div>
+
+        <div class="basic-div"><label class="desc-label">Enable this to try to connect to a hidden SSID</label></div>
+
+        <div class="basic-div basic-three" id="wifi_ssid_list_div">
+          <label class="item-label">Wifi SSID List:</label>
+          <select name="WifiSSID" class="dropdownBox" id="wifi_dropdownBox"></select>
+          <div class="basic-one"> <button class="box-button1" onclick="RequestData('/reqwifisearch')">Refresh</button>
+          </div>
+        </div>
+        <div class="basic-div basic-three" id="wifi_custom_ssid_div">
+          <label class="item-label">Wifi SSID:</label>
+          <input id="wifi_ssid" style="margin-right: 72px;"></input>
+        </div>
+        <div class="basic-div basic-two">
+          <label class="item-label">Wifi Password:</label>
+          <input type="password" id="WIFI_PASSWORD" onchange="handleSettingsChanges(this,'wifi')" />
+          <div class="basic-one"> <button class="box-button1">Connect</button></div>
+        </div>
+        <div class="basic-div basic-two">
+          <label class="item-label">Use Static IP:</label>
+          <label class="switch"><input type="checkbox" id="use_static_ip"
+              onchange="enable('ip_address', this.checked); handleSettingsChanges(this,'wifi','supressdraw')"><span
+              class="slider round"></span></label>
+        </div>
+        <div class="basic-div basic-two">
+          <label class="item-label">IP:</label>
+          <input class="input-wifi" id="ip_address" />
+        </div>
+
+
+        <div class="basic-div basic-two"><label class="item-label">AP SSID:</label><input id="WIFI_AP_SSID"
+            onchange="handleSettingsChanges(this,'wifi')"></input></div>
+        <div class="basic-div basic-two"><label class="item-label">AP Password:</label><input type="password"
+            class="dropdownBox" id="WIFI_AP_PASSWORD" onchange="handleSettingsChanges(this,'wifi')"></input></div>
+
+        <div class="basic-div basic-one"><label class="desc-label">The Acess Point Will be visible if the ESP can't
+            connect
+            to the Wifi.</label></div>
+      </div>
+
+
+      <!-- Backup Settings -->
+      <div class="box-div">
+        <div class="box-title">
+          <label>Backup</label>
+        </div>
+        <div class="basic-div basic-two"><label class="item-label">Enable Backup</label>
+          <label class="switch"><input type="checkbox" name="Cache" id="enable_backup"
+              onclick="enable('backup_freq', this.checked);handleSettingsChanges(this,'backup','slider');"><span class="slider round"></label>
+          </span>
+        </div>
+        <div class="basic-div basic-three">
+          <div class="basic-div basic-two"><label class="item-label">Backup every: </label><input id="backup_freq"
+              onclick="handleSettingsChanges(this,'backup')" type="number" /></div><label
+            class="item-label">Days.</label>
+        </div>
+
+        <div class="basic-div basic-two">
+          <div class="basic-div "><label class="item-label">Last Backup:</label></div><label class="item-label"
+            id='lastbackup'>Never</label>
+        </div>
+
+        <div class="basic-div basic-one"><button class="button2" onclick="ReqData('/backupnow')">Backup Now</button>
+        </div>
+      </div>
+
+      <!--  Files Settings -->
+      <div class="box-div">
+        <div class="box-title">
+          <label>Files Settings</label>
+        </div>
+        <div class="basic-div basic-one"><button class="button2" onclick="RequestData('/resetesp')">Reset ESP</button>
+        </div>
+        <div class="basic-div basic-one"><label class="desc-label">Resets the ESP.</label></div>
+        <div class="basic-div basic-one"><button class="button2"
+            onclick="if (confirm('Are you sure you want to reset all configuration?')){if (confirm('Are double sure you want to factory reset?\nThis is not possible to be undone.'))RequestData('/factoryreset')}">Factory
+            Reset</button></div>
+        <div class="basic-div basic-one"><label class="desc-label">Reset all the configurations to default.</label>
+        </div>
+
       </div>
     </div>
-    <div class="basic-div div-wifi">
-      <div style="display: flex; justify-content: space-between; width: inherit;"><label class="item-label">Calibration
-          Factor:</label><input class="input-wifi" type="number" /></div><label>&deg;C</label>
+
+    <!-- Sensor Settings -->
+    <div>
+      <div class="box-div">
+        <div class="box-title">
+          <label>Sensor Settings</label>
+        </div>
+
+        <div style="display: flex; width: inherit; justify-content: space-between;"><label class="item-label">Sensor
+            Type:</label> <select class="dropdownBox" id="temp_sensor_type"
+            onchange="togglediv('temp_sensor',this.value);handleSettingsChanges(this,'sensor')">
+            <option value="0">DS18B20</option>
+            <option value="2">NTC Thermopar</option>
+          </select></div>
+
+        <!-- NTC Thermopar options -->
+        <div id="ntc-div" style="display: none;">
+          <div class="basic-div basic-three">
+            <div class="basic-div basic-two"><label class="item-label">NTC Pin:</label> <input id="NTC_READ_PIN"
+                type="number" min="0" max="39" /></div><span></span>
+          </div>
+          <div class="basic-div basic-three">
+            <div class="basic-div basic-two"><label class="item-label">NTC ENABLE Pin:</label> <input
+                id="NTC_ENABLE_PIN" type="number" min="0" max="39" /></div><span></span>
+          </div>
+          <div class="basic-div basic-one"><label class="desc-label"></label></div>
+          <div class="basic-div basic-one"><label class="desc-label">Please inform the caracteristcs of the NTC used
+              below:</label></div>
+          <div class="basic-div basic-three">
+            <div class="basic-div basic-two">
+              <label class="item-label">Thermopar Resistance:</label>
+              <input id="NTC_BASE_RESISTANCE" type="number" min=0 class="" />
+            </div>
+            <label class="item-label">k&#x3A9;</label>
+          </div>
+
+          <div class="basic-div basic-three">
+            <div class="basic-div basic-two">
+              <label class="item-label">Thermopar Beta Coeff:</label>
+              <input id="NTC_BETA" type="number" min=0 />
+            </div>
+            <label class="item-label"></label>
+          </div>
+
+          <div class="basic-div basic-three">
+            <div class="basic-div basic-two"><label class="item-label">Thermopar Nominal Temp: </label>
+              <input id="NTC_BASE_TEMP" type="number" min=0 />
+            </div>
+            <label class="item-label">&deg;C</label>
+          </div>
+          <div class="basic-div basic-one"><label class="desc-label">If you want even more precion on the readings of a
+              NTC,
+              you can make a ADC calibration of the specific microcontroller.</label></div>
+          <div class="basic-div basic-two"><label class="item-label">Use Correction polynome for ADC values:</label>
+            <label class="switch"><input type="checkbox" name="Cache" id="ADC_REQ_CORRECT"
+                onchange="handleSettingsChanges(this,'sensor','slider');enable('ADC_CORRECTION',this.checked)"><span
+                class="slider round"></label>
+            </span>
+          </div>
+          <div class="basic-div basic-two"><label class="item-label">Correction polynome:</label><input
+              class="dropdownBox" id="ADC_CORRECTION"></input></div>
+          <div class="basic-div basic-one"><label class="desc-label">Usege: 'coeff' <label
+                style="font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif; font-size: 14;">x</label>
+              'expoent'+... Example:<br></label>
+          </div>
+          <div class="basic-div basic-one"><label class="desc-label"
+              style="font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;">2x0+3x4+1.65E-9x5+0.354E8x6</label>
+          </div>
+        </div>
+        <div id="ds18-div">
+          <div class="basic-div basic-three">
+            <div class="basic-div basic-two"><label class="item-label">OneWire Pin:</label> <input id="ONEWIRE_BUS"
+                type="number" /></div><span></span>
+          </div>
+          <div class="basic-div basic-three">
+            <div class="basic-div basic-two"><label class="item-label">Resolution:</label> <input
+                id="TEMPERATURE_RESOLUTION" type="number" min=9 max=12 step="1" onchange="handleSettingsChanges(this,'sensor')" value="9" /></div>
+            <label class="item-label">bits</label>
+          </div>
+          <div class="basic-div basic-one"><label class="desc-label" style="text-align: justify;">The resolution of the
+              sensor changes how much time it
+              takes to calculate a temperature and how little the temperature increments are. Do note that, in the
+              <label style="font-family:Verdana, Geneva, Tahoma, sans-serif; font-size: 14px;">DS18B20</label> sensor
+              family,
+              altought the
+              reported temperature can have up to <label
+                style="font-family:Verdana, Geneva, Tahoma, sans-serif; font-size: 14px;">0.0625&deg;C</label> of
+              increments, the <a href="https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf" target="_blank"
+                rel="noopener noreferrer">datasheet</a> informs that it is a product of an avarage and the precision is
+              around <label style="font-family:Verdana, Geneva, Tahoma, sans-serif; font-size: 14px;">0.5&deg;C</label>
+              across the measuring spectrum.</label></div>
+        </div>
+        <div class="basic-div basic-three">
+          <div class="basic-div basic-two"><label class="item-label">Tolerance:</label> <input id="tolerance"
+              type="number" class="input-pin" value="0" /></div>
+          <label class="item-label">&deg;C</label>
+        </div>
+        <div class="basic-div basic-one"><label class="desc-label">The Relay will be switched on or off on the set
+            temperature plus
+            or less the tolerance.</label></div>
+        <div id="nocal_div">
+          <div class="basic-div basic-one">
+            <button class="button2" onclick="togglediv('cal_div',true)">Calibrate</button>
+          </div>
+          <div class="basic-div basic-one"><label class="desc-label">Manually Calibrate Sensor</label></div>
+        </div>
+
+        <!-- Calibrations -->
+        <div id="cal_div" style="display: none;">
+          <div class="basic-div basic-one"><label class="item-label">Value on Sensor:</label></div>
+          <div style="display:flex; margin:auto; justify-content: center;">
+            <div id="cal_raw_sensor"></div>
+            <div id="cal_sensor"></div>
+          </div>
+
+
+          <div class="basic-div basic-three">
+            <div class="basic-div basic-two"><label class="item-label">Calibration:</label> <input id="calibration"
+                type="number" class="input-pin" value="0" /></div>
+            <label class="item-label">&deg;C</label>
+          </div>
+
+          <div class="basic-div basic-one">
+            <button onclick="togglediv('cal_div',false)" class="button2">Validate</button>
+          </div>
+        </div>
+      </div>
+      <button class="savebutton" onclick="saveconfig()">Save</button>
+
     </div>
 
     <div>
-      <button onclick="showCalibrationDiv(false)">Validate</button>
+      <!-- General Settings -->
+      <div class="box-div">
+        <div class="box-Title">
+          <label>General</label>
+        </div>
+        <div class="basic-div basic-two"><label class="item-label">Host name:</label><input id="host_name"
+            onchange="handleSettingsChanges(this,'general')" /></div>
+        <div class="basic-div basic-three">
+          <div class="basic-div basic-two"><label class="item-label">Relay Pin:</label> <input id="RELAY_PIN"
+              type="number" onchange="handleSettingsChanges(this,'general')" min=0 max=39 step="1" /></div><span></span>
+        </div>
+        <div class="basic-div basic-two"><label class="item-label">Enable Cache</label>
+          <label class="switch"><input type="checkbox" id="enableCache"
+              onchange="handleSettingsChanges(this,'general','slider')"><span class="slider round"></label>
+          </span>
+        </div>
+        <div class="basic-div basic-one"><label class="desc-label">Enable Cache of Files, trading RAM for
+            prefomance.</label>
+        </div>
+        <div class="basic-div basic-two"><label class="item-label">Continuos Log:</label>
+          <label class="switch"><input type="checkbox" id="continousLog"
+              onchange="handleSettingsChanges(this,'general','slider')"><span class="slider round"></label>
+          </span>
+        </div>
+        <div class="basic-div basic-one"><label class="desc-label">Logs the temperature continously on a file even while
+            idle.</label></div>
+
+        <div class="basic-div basic-three">
+          <div class="basic-div basic-two"><label class="item-label">Sample Rate:</label><input class="basic-number"
+              type="number" step="1" min="0" id="sample_freq" /></div><label class="item-label">Secs.</label>
+        </div>
+        <div class="basic-div basic-one"><label class="desc-label">how long between each input on the csv file.<br>Also
+            this
+            will be the time between each update in the web interface.</label></div>
+        <div id="nonewpassdiv" style="display: block;">
+          <div class="basic-div basic-one"><button class="button2" onclick="togglediv('change_password',true)">Change
+              Password</button></div>
+          <div class="basic-div basic-one"><label class="desc-label">Click here to change the Credentials.</label></div>
+        </div>
+        <div id="newpassdiv" style="display: none;">
+          <div class="basic-div basic-two"><label class="item-label">Old Password:</label><input id="oldpassword"
+              class="input-wifi" type="password" /></div>
+          <div class="basic-div basic-two"><label class="item-label">New Password:</label><input id="newpassword"
+              class="input-wifi" type="password" /></div>
+          <div class="basic-div basic-two"><label class="item-label">Confirm:</label><input id="confirmpassword"
+              class="input-wifi" type="password" /></div>
+          <div class="basic-div basic-one"><button class="button2" onclick="send()">Save</button></div>
+        </div>
+
+      </div>
+
+      <!--  Upload Settings -->
+      <div class="box-div">
+        <div class="box-title">
+          <label>Auto Upload Results</label>
+        </div>
+        <div class="basic-div basic-two"><label class="item-label">Enable Auto Upload</label>
+          <label class="switch"><input type="checkbox" onclick="handleSettingsChanges(this,'upload','slider')"><span
+              class="slider round"></label>
+          </span>
+        </div>
+        <div class="basic-div basic-one"><label class="desc-label">This enables the upload of continuos log after an
+            amount
+            of time.</label></div>
+
+        <div class="basic-div basic-three">
+          <div class="basic-div basic-two"><label class="item-label">Upload Monitor Log every: </label><input
+              class="input-wifi" type="number" /></div><label class="item-label">Days.</label>
+        </div>
+        <div class="basic-div basic-two"><label class="item-label">Enable Upload Results:</label>
+          <label class="switch"><input type="checkbox" name="Cache" id="enable_upload"
+              onchange="handleSettingsChanges(this,'upload','slider')"><span class="slider round"></label>
+          </span>
+        </div>
+        <div class="basic-div basic-one"><label class="desc-label">Enables the automatic upload of the result csv file
+            after
+            every ramp.</label></div>
+
+        <div class="basic-div basic-two"><label class="item-label">Service:</label><select name="WifiSSID"
+            class="dropdownBox" id="UploadServiceType">
+            <option value="0">Gmail</option>
+            <option value="1">Google Drive</option>
+          </select></div>
+        <div class="basic-div basic-two" id="UploadLoginLabel"><label class="item-label" id="UploadLoginLabel">Login:</label><input id='UploadLogin'></input></div>
+        <div class="basic-div basic-two" id="UploadPasswordDiv"><label class="item-label" id="UploadPasswordLabel">Password:</label><input id='UploadPassword'
+            type="password" /></div>
+
+      </div>
     </div>
+
+
+
   </div>
 
-  <!-- pins Settings -->
-  <div class="box-div">
-    <div class="box-title">
-    </div>
-    <div class="div-pin"><label class="label-pin">Relay Pin:</label> <input id="relay_pin" type="number" min=0 max=39
-        step="1" class="input-pin" /></div>
-    <div class="basic-div div-pin"><label class="label-pin">OneWire Pin:</label> <input id="onewire_pin" type="number"
-        min=0 max=39 step="1" class="input-pin" /></div>
-  </div>
 
 
 </body>

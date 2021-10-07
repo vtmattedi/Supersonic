@@ -8,26 +8,36 @@ body {
     background-color: #F0FFF0;
     flex-wrap: wrap;
 }
- .circle_box
+.circle_box
 {
     transform: scale(0.65,0.65);
     width: 130px !important;
     height: 130px !important;
 }
 input[type=number] {
-    width: 50px;
+    width: calc(var(--BoxSize)/4);
     height: 30px;
     border: 1px solid #ccc;
     border-radius: 4px;
     margin-right: 2px;
     font-size: 18px;
     text-align: center;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    
+    
 }
+input[type='number']::-webkit-inner-spin-button
+{
+    display: none;
+}
+
 input
 {
-    text-align: right;
+    text-align: center;
     width: var(--TextWidth);
     height: var(--TextHeight);
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 16px;
   
 }
 
@@ -74,16 +84,18 @@ label {
 
 .box-title 
 {
-    font-weight: bold;
     text-transform: uppercase;
     display: flex;
     background-color: wheat;
     width: var(--BoxSize);
     justify-content: center;
+    margin-bottom: 7px;
     
 }
 .box-title label
 {
+    font-family: 'Glory', sans-serif;
+    font-weight: bold;
     font-size: 24px;
 }
 
@@ -95,6 +107,7 @@ label {
     width: var(--BoxSize); 
     flex-direction: column;
     margin: auto;
+    margin-top: 10px;
     justify-content: center;
 }
 .basic-div
@@ -106,6 +119,11 @@ label {
 .basic-three
 {
     justify-content: space-between;
+}
+.basic-three .basic-two
+{
+    justify-content: space-between;
+    min-width: calc(var(--BoxSize) * 0.85);
 }
 .basic-two
 {
@@ -141,9 +159,65 @@ label {
 }
 .desc-label
 {
-    text-align: center;
-    font-size: 14px;
+    text-align: justify;
+    font-size: 16px;
     font-family: 'Bona Nova', serif;
 }
 
+.button2
+{
+    margin-top: 10px;
+    height: 1.75rem;
+    width: calc(var(--BoxSize)/2);
+    border-radius: 5px;
+    border: 1px solid;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 1rem;
+    background-color: #fff7f7;
+
+}
+.button2:hover
+{
+    border: 2px solid black;
+    background-color: #fff7f7b0;
+    color: red;
+}
+
                     
+.basic-number
+{
+    width: var(--BoxSize)/4;
+    
+}
+
+.savebutton
+{
+    width: var(--BoxSize);
+    height: 3rem;
+    margin: auto;
+    margin-top: 5%;
+    text-align: center;
+    font-family:Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 1.25rem;
+    border-radius: 20px;
+}
+.savebutton:hover
+{
+    background-color: snow;
+    border: 3px solid black;
+    color: salmon;
+    border-radius: 40px;
+}
+
+.redbk{
+
+    animation: redness;
+    animation-duration: 4s;
+
+}
+
+@keyframes redness
+{
+    from{ background-color: #ff0000;}
+    to{}
+}
