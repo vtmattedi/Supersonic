@@ -21,18 +21,22 @@
 #include <ArduinoOTA.h>
 #include <SPIFFS.h>
 #include "FS.h"
-#include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\.pio\libdeps\esp32dev\AsyncTCP-esphome\src\AsyncTCP.h>
 #include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\.pio\libdeps\esp32dev\ESPAsyncWebServer-esphome\src\ESPAsyncWebServer.h>
 #include <DNSServer.h>
-//#include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\include\SD\SDCard.h>
 #include "SD_MMC.h"
 #include "esp_task_wdt.h"
+
+#define DEBUGWEB
+// #define DEBUGLOG
+// #define DEBUGGENERAL
+// #define DEBUGTEMP
+// #define DEBUGRAMP
 
 // Globals
 
 //protects the SD_MMC fs of acessing more than available free files descriptors
 static SemaphoreHandle_t sd_mutex;
-
+static SemaphoreHandle_t get_ap_mutex;
 
 #define HISTORY_SIZE 1000
 #define MAX_ADC_CORRECTION_EXPONENT 15
@@ -123,6 +127,9 @@ struct Settings
     String UploadLogin = "";
     String UploadPassword = "";
 
+    /*missing*/ bool auto_upload = false;
+    /*missing*/ uint auto_upload_freq = 0;
+
     //Sample rate for logging
     uint16_t sample_freq = 1;
 
@@ -138,13 +145,13 @@ struct Settings
     byte temp_sensor_type = 0;
 
     uint NTC_BASE_RESISTANCE = 100000;
+    uint16_t NTC_BETA = 3450;
     int8_t NTC_BASE_TEMP = 25;
     uint8_t NTC_READ_PIN = 12;
-    int8_t NTC_ENABLE_PIN = -1;
-    uint16_t NTC_BETA = 3450;
+    uint8_t NTC_ENABLE_PIN = -1;
 
-    bool ADC_REQ_CORRECT = false;
-    String ADC_CORRECTION = "1x0+2e-9x1+-3e-9x2+0.35e-9x5+3.5e-9x4+-0.513514546848464e-9x6+;";
+    /*missing*/ bool ADC_REQ_CORRECT = false;
+    /*missing*/ String ADC_CORRECTION = "1x0+2e-9x1+-3e-9x2+0.35e-9x5+3.5e-9x4+-0.513514546848464e-9x6+;";
 
     //Enables Cacheing;
     bool enableCache = true;
@@ -608,7 +615,7 @@ public:
     void startLogs()
     {
         generateCsv();
-        generateLog();
+        // generateLog();
     }
     void generateCsv()
     {
@@ -636,9 +643,8 @@ public:
         }
 
         Serial.print("Creating '");
-        Serial.print(csvFile);
-        Serial.println("'. Time, Temp, SetTemp, Relay, CurrentStep");
-        File_Writer(csvFile, "Time Stamp,Time, Temperature,Set Temperature, Relay Status, Current Step, comment\n", true, false);
+        Serial.println(csvFile);
+        File_Writer(csvFile, "'Time Stamp','Relative Time','Temperature','Set Temperature','Relay Status','Current Step','Comment'\n", true, false);
     }
     //Starts the Log file
     void generateLog()
@@ -697,9 +703,27 @@ public:
         Message += now();
         Message += ",";
         if (heating)
-            Message += now() - startHeating;
+        {
+            if (now() > startHeating)
+            {
+                Message += startHeating - now();
+            }
+            else
+            {
+                Message += now() - startHeating;
+            }
+        }
         else
-            Message += now() - startTime;
+        {
+            if (now() > startTime)
+            {
+                Message += startTime - now();
+            }
+            else
+            {
+                Message += now() - startTime;
+            }
+        }
         Message += ",";
         Message += temperature;
         Message += ",";
@@ -715,10 +739,11 @@ public:
     }
     void log(String message)
     {
-        String _message = "[";
-        _message += now() - startTime;
-        _message += "] ";
-        File_Writer(logFile, _message, true, false);
+        return;
+        // String _message = "[";
+        // _message += now() - startTime;
+        // _message += "] ";
+        // File_Writer(logFile, _message, true, false);
     }
     //Resets the HeatRamp Object --not otimized
     void reset()
@@ -1168,6 +1193,707 @@ String GetSdFileSafe(String filename)
     return file;
 }
 
+String GetPage()
+{
+    return
+        //##$$test.html
+R"===(<head>
+    <script>
+  function FileUpload(file) {
+  const reader = new FileReader();
+  const xhr = new XMLHttpRequest();
+  this.xhr = xhr;
+
+  const self = this;
+  this.xhr.upload.addEventListener("progress", function(e) {
+        if (e.lengthComputable) {
+          const percentage = Math.round((e.loaded * 100) / e.total);
+          console.log(percentage);
+        }
+      }, false);
+
+  xhr.upload.addEventListener("load", function(e){
+
+      }, false);
+  xhr.open("POST", "/dodo");
+  xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
+  reader.onload = function(evt) {
+    xhr.send(evt.target.result);
+  };
+  reader.readAsBinaryString(file);
+}
+    </script>
+    </head>
+
+
+<form action="/dodo" method="POST" enctype="multipart/form-data">
+    <input name="fupdate" id="fone" type="file" />
+    <button type="submit" > go </button>
+</form>)==="//##$$
+        ;
+}
+
+String GetPage2()
+{
+    return
+        //##$$Settings.js
+R"===(RequestData('/loadconfig');
+RequestData('/reqwifisearch',10000);
+var ReqInfo = setInterval(() => { RequestData('/systeminfo') }, 1500);
+var ESP_Connected = true;
+var failedRequests = 0;
+var wifiAPs = [, ,]
+const sysinfo = new InfoCreator();
+const config = new Settings();
+
+var test = "config:tolerance=0.50,calibration=0.00,TEMPERATURE_RESOLUTION=9,sample_freq=1,WIFI_SSID=MCarvalho,www_username=admin,WIFI_AP_SSID=ESP32,use_static_ip=0,static_ip=,enable_upload=0,UploadServiceType=0,UploadLogin=,enableCache=1,continousLog=1,enable_backup=0,backup_freq=0,lastbackup=0,RELAY_PIN=13,ONEWIRE_BUS=16,host_name=Estufa,WIFI_AP_PASSWORD=ESP32ESP32,;";
+
+function InfoCreator() {
+    this.ram = 0;
+    this.ramMax = 0;
+    this.SD = 0;
+    this.SDMax = 0;
+    this.internalTemp = 0;
+    this.SPIFFS = 0;
+    this.SPIFFSMax = 0;
+    this.load = function (params) {
+        var value = "";
+        var variable = "";
+        var nextChar;
+        var isValue = false;
+
+        for (var i = 0; i < params.length; i++) {
+            nextChar = params[i];
+            if (!isValue) {
+                if (nextChar != '=')
+                    variable += nextChar;
+                else
+                    isValue = true;
+            }
+            else {
+                if (nextChar != ',')
+                    value += nextChar;
+                else {
+                    if (variable == "SD")
+                        this.SD = parseInt(value);
+                    else if (variable == "SDMax")
+                        this.SDMax = parseInt(value);
+                    else if (variable == "ram")
+                        this.ram = parseInt(value);
+                    else if (variable == "ramMax")
+                        this.ramMax = parseInt(value);
+                    else if (variable == "SPIFFS")
+                        this.SPIFFS = parseInt(value);
+                    else if (variable == "SPIFFSMax")
+                        this.SPIFFSMax = parseInt(value);
+                    else if (variable == "internalTemp")
+                        this.internalTemp = parseFloat(value);
+
+                    value = "";
+                    variable = "";
+                    isValue = false;
+                }
+            }
+        }
+        this.update();
+    };
+    this.update = function () {
+        setnew('internalTemp', this.internalTemp);
+
+        if (ram >= 85)
+            setnew('ram', this.ram, this.ram, 'darkred', 'darkred');
+        else
+            setnew('ram', this.ram, this.ram, 'darkblue', 'darkblue');
+
+        if (ram >= 85)
+            setnew('sdcard', this.SD, this.SD, 'darkred', 'darkred');
+        else
+            setnew('sdcard', this.SD, this.SD, 'darkgreen', 'darkgreen');
+
+        if (ram >= 85)
+            setnew('SPIFFS', this.SPIFFS, this.SPIFFS, 'darkred', 'darkred');
+        else
+            setnew('SPIFFS', this.SPIFFS, this.SPIFFS, 'darkgreen', 'darkgreen');
+
+
+    };
+}
+
+function Settings() {
+    this.tolerance = 0;
+    // Will mantain temperature within this tolerance.
+    this.calibration = 0;
+    //Resolution of DS18b20 Sensor 
+    this.TEMPERATURE_RESOLUTION = 9;
+
+    //Web Site Credentials
+    this.www_username = "";
+    this.www_password = "";
+
+    //Wifi Credentials
+    this.WIFI_SSID = "";
+    this.WIFI_PASSWORD = "";
+    this.WIFI_AP_SSID = "";
+    this.WIFI_AP_PASSWORD = "";
+    this.use_static_ip = false;
+    this.static_ip = "";
+
+    /*
+    * Available Services: Gmail = 0
+    *                    Google Drive = 1
+    */
+    this.enable_upload = false;
+    this.UploadServiceType = 0;
+    this.UploadLogin = "";
+    this.UploadPassword = "";
+
+    //Sample rate for logging
+    this.sample_freq = 0;
+
+    //Config of Pins
+    this.RELAY_PIN = 0;
+    this.ONEWIRE_BUS = 0;
+
+
+    /*
+        0 = DS1820
+        1 = DS1820 High Temp
+        2 = NTC thermopar
+    */
+    this.temp_sensor_type = 0;
+
+    this.NTC_BASE_RESISTANCE = 0;
+    this.NTC_BASE_TEMP = 0;
+    this.NTC_READ_PIN = 0;
+    this.NTC_ENABLE_PIN = 0;
+    this.NTC_BETA = 0;
+    this.ADC_REQ_CORRECT = false;
+    this.ADC_CORRECTION = "";
+
+
+    //Enables Cacheing; 
+    this.enableCache = true;
+    this.continousLog = true;
+
+    //Backup Options 
+    this.enable_backup = false;
+    this.backup_freq = 0;
+    this.lastbackup = 0;
+
+    this.host_name = "";
+
+    this.load = function (newConfig) {
+
+        var value = "";
+        var variable = "";
+        var nextChar;
+        var isValue = false;
+        for (var i = 0; i < newConfig.length; i++) {
+            nextChar = newConfig[i];
+            if (!isValue) {
+                if (nextChar != '=')
+                    variable += nextChar;
+                else
+                    isValue = true;
+            }
+            else {
+                if (nextChar != ',')
+                    value += nextChar;
+                else {
+                    if (variable == "tolerance")
+                        this.tolerance = parseFloat(value);
+                    else if (variable == "calibration")
+                        this.calibration = parseFloat(value);
+                    else if (variable == "WIFI_SSID")
+                        this.WIFI_SSID = value;
+                    else if (variable == "WIFI_PASSWORD")
+                        this.WIFI_PASSWORD = value;
+                    else if (variable == "WIFI_AP_SSID")
+                        this.WIFI_AP_SSID = value;
+                    else if (variable == "WIFI_AP_PASSWORD")
+                        this.WIFI_AP_PASSWORD = value;
+                    else if (variable == "www_username")
+                        this.www_username = value;
+                    else if (variable == "www_password")
+                        this.www_password = value;
+                    else if (variable == "TEMPERATURE_RESOLUTION")
+                        this.TEMPERATURE_RESOLUTION = parseInt(value);
+                    else if (variable == "sample_freq")
+                        this.sample_freq = parseInt(value);
+                    else if (variable == "use_static_ip ")
+                        this.use_static_ip = value == "1" ? true : false;
+                    else if (variable == "static_ip")
+                        this.static_ip = value;
+                    else if (variable == "enableCache")
+                        this.enableCache = value == "1" ? true : false;
+                    else if (variable == "continousLog")
+                        this.continousLog = value == "1" ? true : false;
+                    else if (variable == "enable_backup")
+                        this.enable_backup = value == "1" ? true : false;
+                    else if (variable == "backup_freq")
+                        this.backup_freq = parseInt(value);
+                    else if (variable == "lastbackup")
+                        this.lastbackup = parseInt(value);
+                    else if (variable == "host_name")
+                        this.host_name = value;
+                    else if (variable == "RELAY_PIN")
+                        this.RELAY_PIN = parseInt(value);
+                    else if (variable == "ONEWIRE_BUS")
+                        this.ONEWIRE_BUS = parseInt(value);
+                    else if (variable == "UploadServiceType")
+                        this.UploadServiceType = parseInt(value);
+                    else if (variable == "enable_upload")
+                        this.enable_upload = value == "1" ? true : false;
+                    else if (variable == "UploadLogin")
+                        this.UploadLogin = value;
+                    else if (variable == "UploadPassword")
+                        this.UploadPassword = value;
+                    else if (variable == "temp_sensor_type")
+                        this.temp_sensor_type = parseInt(value);
+                    else if (variable == "NTC_BASE_RESISTANCE")
+                        this.NTC_BASE_RESISTANCE = parseInt(value);
+                    else if (variable == "NTC_BASE_TEMP")
+                        this.NTC_BASE_TEMP = parseInt(value);
+                    else if (variable == "NTC_READ_PIN")
+                        this.NTC_READ_PIN = parseInt(value);
+                    else if (variable == "NTC_ENABLE_PIN")
+                        this.NTC_ENABLE_PIN = parseInt(value);
+                    else if (variable == "NTC_BETA")
+                        this.NTC_BETA = parseInt(value);
+
+                    value = "";
+                    variable = "";
+                    isValue = false;
+                }
+            }
+        }
+    };
+
+    this.send = function (complete) {
+
+            var message = "";
+            message += "tolerance=";
+            message += this.tolerance;
+            message += ",calibration=";
+            message += this.calibration;
+            message += ",TEMPERATURE_RESOLUTION=";
+            message += this.TEMPERATURE_RESOLUTION;
+            message += ",sample_freq=";
+            message += this.sample_freq;
+            message += ",WIFI_SSID=";
+            message += this.WIFI_SSID;
+            if (complete)
+            {
+                message += ",WIFI_PASSWORD=";
+                message += this.WIFI_PASSWORD;
+            }
+            message += ",www_username=";
+            message += this.www_username;
+            if (complete)
+            {
+                message += ",www_password=";
+                message += this.www_password;
+            }
+            message += ",WIFI_AP_SSID=";
+            message += this.WIFI_AP_SSID;
+            if (complete)
+            {
+                message += ",WIFI_AP_PASSWORD=";
+                message += this.WIFI_AP_PASSWORD;
+            }
+            message += ",use_static_ip=";
+            message += this.use_static_ip;
+            message += ",static_ip=";
+            message += this.static_ip;
+            message += ",enable_upload=";
+            message += this.enable_upload;
+            message += ",UploadServiceType=";
+            message += this.UploadServiceType;
+            message += ",UploadLogin=";
+            message += this.UploadLogin;
+            if (complete)
+            {
+                message += ",UploadPassword=";
+                message += this.UploadPassword;
+            }
+            message += ",enableCache=";
+            message += this.enableCache;
+            message += ",continousLog=";
+            message += this.continousLog;
+            message += ",enable_backup=";
+            message += this.enable_backup;
+            message += ",backup_freq=";
+            message += this.backup_freq;
+            message += ",lastbackup=";
+            message += this.lastbackup;
+            message += ",RELAY_PIN=";
+            message += this.RELAY_PIN;
+            message += ",ONEWIRE_BUS=";
+            message += this.ONEWIRE_BUS;
+            message += ",host_name=";
+            message += this.host_name;
+            message += ",temp_sensor_type=";
+            message += this.temp_sensor_type;
+            message += ",NTC_BASE_RESISTANCE=";
+            message += this.NTC_BASE_RESISTANCE;
+            message += ",NTC_BASE_TEMP=";
+            message += this.NTC_BASE_TEMP;
+            message += ",NTC_READ_PIN=";
+            message += this.NTC_READ_PIN;
+            message += ",NTC_ENABLE_PIN=";
+            message += this.NTC_ENABLE_PIN;
+            message += ",NTC_BETA=";
+            message += this.NTC_BETA;
+            message += ",;";
+    
+            return message;
+        };
+}
+
+function RequestData(whichdata, timeout) {
+    if (typeof whichdata !== 'string') {
+        httpGetAsync("requpdate", ParseNewData, timeout);
+    }
+    else
+        httpGetAsync(whichdata, ParseNewData, timeout);
+}
+
+function ParseNewData(incomeString) {
+    try {
+
+        for (var i = 0; i < incomeString.split(';').length; i++) {
+            var _args = incomeString.split(';')[i].split(':');
+            if (_args[0] == 'config') {
+                config.load(_args[1]);
+            }
+
+            if (_args[0] == 'sysinfo') {
+                sysinfo.load(_args[1]);
+
+            }
+            if (_args[0] == 'wifiAP') {
+                var aps = _args[1].split(',');
+                wifiAPs = [, ,];
+                for (var i = 0; i < aps.length -1; aps++) {
+                    if (aps[i] !== '') {
+                        wifiAPs[i][0] = aps[i].split('=')[0];
+                        wifiAPs[i][1] = aps[i].split('=')[1];
+
+                    }
+                }
+
+            }
+            if (_args[0] == 'cal_temp') {
+                if (!isNaN((parseFloat(_args[1]))))
+                    setnew('raw_temp', _args[1]);
+                if (!isNaN((parseFloat(_args[2]))))
+                    setnew('cal_temp', _args[2]);
+            }
+            if (_args[0] == 'error') {
+                alert(_args[1]);
+            }
+
+        }
+
+
+    }
+
+
+    catch (err) {
+        console.log(err);
+    }
+}
+
+function httpGetAsync(theUrl, callback, timeout) {
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function () {
+        if (xmlHttp.readyState == 4) {
+            if (xmlHttp.status == 200) {
+                callback(xmlHttp.responseText);
+                if (!ESP_Connected) {
+                    ESP_Connected = true;
+                    changeESPConnected(ESP_Connected);
+                }
+                failedRequests = 0;
+            }
+            else {
+                if (ESP_Connected) {
+                    failedRequests++;
+                    if (failedRequests >= 3) {
+                        ESP_Connected = false;
+                        changeESPConnected(ESP_Connected);
+                    }
+                }
+            }
+        }
+
+    }
+    xmlHttp.open("GET", theUrl, true); // true for asynchronous
+    xmlHttp.timeout = 1000;
+    if (typeof (timeout) === 'number')
+        xmlHttp.timeout = timeout
+    try {
+        xmlHttp.send();
+
+    } catch (error) {
+        console.log(error);
+    }
+
+}
+
+window.onload = function () {
+    generateCircle('circle_1', 'RAM:', 0, 'ram', '#d4ebd3', 'darkblue', 'darkblue', '%');
+    generateCircle('circle_2', 'TEMP:', 0, 'internalTemp', '#d4ebd3', 'darkred', 'darkred', '&deg;C', 'map 20 80 0 100');
+    generateCircle('circle_3', 'SD:', 0, 'sdcard', '#d4ebd3', 'darkgreen', 'darkgreen', '%');
+    generateCircle('circle_4', 'SPIFFS:', 0, 'SPIFFS', '#d4ebd3', 'darkgreen', 'darkgreen', '%');
+    generateCircle('cal_raw_sensor', 'Raw:', 0, 'raw_temp', '#d4ebd3', 'red', 'red', '&deg;C', 'map 20 80 0 100');
+    generateCircle('cal_sensor', 'Calib:', 0, 'cal_temp', '#d4ebd3', 'darkred', 'darkred', '&deg;C', 'map 20 80 0 100');
+    setLabelSize('cal_temp', '45px');
+    setLabelSize('raw_temp', '45px');
+    setnew('raw_temp', '0');
+    setnewangle('raw_temp', 120);
+    setnew('cal_temp', '0');
+    setnewangle('cal_temp', 120);
+    setnewangle('ram', 120);
+    setnewangle('internalTemp', 120);
+    setnewangle('sdcard', 120);
+    setnewangle('SPIFFS', 120);
+
+    ParseNewData(test);
+    draw('all');
+
+}
+
+function changeESPConnected(isESPConnected) {
+    if (typeof (isESPConnected) === 'undefined')
+        return;
+
+    if (isESPConnected)//do Online stuff
+    {
+
+
+        ESP_Connected = true;
+    }
+    else//do Offline stuff 
+    {
+        ESP_Connected = false;
+
+    }
+
+}
+
+function animatereconect(size) {
+
+    if (!ESP_Connected)
+        setTimeout(() => { animatereconect(size) }, 500);
+}
+
+function enable(id, value) {
+    if (value)
+        $(id).removeAttribute("disabled");
+    else
+        $(id).setAttribute("disabled", "disabled");
+
+}
+
+function showCalibrationDiv(show) {
+    if (show) //Show Calibration Div
+    {
+        document.getElementById("cal_div").style.display = "block";
+    }
+    else //Hide Calibration Div
+    {
+        document.getElementById("cal_div").style.display = "none";
+
+    }
+}
+
+function handleSettingsChanges(sender, area, type) {
+    if (typeof (type) === 'undefined')
+        type = 'common';
+    var variable = "";
+    variable += sender.id;
+
+    console.log(sender.id, sender.value)
+
+    if (type == 'common') {
+        config[variable] = sender.value;
+        draw(area);
+        return;
+    }
+    if (type == 'suppressdraw') {
+        config[variable] = sender.value;
+        return;
+    }
+
+
+
+    if (type === 'slider') {
+        config[variable] = sender.checked;
+        draw(area);
+        return;
+    }
+}
+
+function draw(params) {
+
+    if (params == 'all') {
+        draw('wifi');
+        draw('general');
+        draw('files');
+        draw('backup');
+        draw('sensors');
+        draw('upload');
+    }
+    if (params == 'wifi') {
+        $('wifi_ssid').value = config.WIFI_SSID;//custom ssid
+        $('WIFI_PASSWORD').value = config.WIFI_PASSWORD;
+        $('WIFI_AP_SSID').value = config.WIFI_AP_SSID;
+        $('WIFI_AP_PASSWORD').value = config.WIFI_AP_PASSWORD;
+        $('ip_address').value = config.static_ip;
+        $('use_static_ip').checked = config.use_static_ip;
+
+        enable('ip_address', config.use_static_ip);
+        togglediv('wifi_ssid', $('wifi_custom_ssid').checked);
+        //enable()
+
+    }
+
+    if (params == 'general') {
+        $('host_name').value = config.host_name;
+        $('sample_freq').value = config.sample_freq;
+        $('enableCache').checked = config.enableCache;
+        $('continousLog').checked = config.continousLog;
+        $('RELAY_PIN').value = config.RELAY_PIN;
+
+    }
+    if (params == 'backup') {
+        $('enable_backup').checked = config.enable_backup;
+        $('backup_freq').value = config.backup_freq;
+        if (config.lastbackup > 0)
+            $('lastbackup').innerText = new Date(config.lastbackup * 1000).toDateString();
+        else
+            $('lastbackup').innerText = 'Never';
+    }
+    if (params == 'upload') {
+        $('enable_upload').checked = config.enable_upload;
+        $('UploadServiceType').value = config.UploadServiceType;
+        $('UploadLogin').value = config.UploadLogin;
+        $('UploadPassword').value = config.UploadPassword;
+        togglediv('upload_service', config.UploadServiceType);
+        //add auto upload
+    }
+    if (params == 'sensors') {
+        $('NTC_READ_PIN').value = config.NTC_READ_PIN;
+        $('NTC_ENABLE_PIN').value = config.NTC_ENABLE_PIN;
+        $('NTC_BASE_RESISTANCE').value = config.NTC_BASE_RESISTANCE;
+        $('NTC_BASE_TEMP').value = config.NTC_BASE_TEMP;
+        $('NTC_BETA').value = config.NTC_BETA;
+        $('ONEWIRE_BUS').value = config.ONEWIRE_BUS;
+        $('ADC_REQ_CORRECT').checked = config.ADC_REQ_CORRECT;
+        $('ADC_CORRECTION').value = config.ADC_CORRECTION;
+        $('ONEWIRE_BUS').value = config.ONEWIRE_BUS;
+        $('TEMPERATURE_RESOLUTION').value = config.TEMPERATURE_RESOLUTION;
+        $('calibration').value = config.calibration;
+        $('tolerance').value = config.tolerance;
+        $('temp_sensor_type').value = config.temp_sensor_type;
+        togglediv('temp_sensor', config.temp_sensor_type)
+    }
+}
+
+function togglediv(which, value) {
+    if (which === 'wifi_ssid') {
+        if (value) {
+            $('wifi_ssid_list_div').style.display = 'none';
+            $('wifi_custom_ssid_div').style.display = 'flex'
+        }
+        else {
+            $('wifi_ssid_list_div').style.display = 'flex';
+            $('wifi_custom_ssid_div').style.display = 'none'
+        }
+    }
+    if (which === 'change_password') {
+        if (value) {
+            $('nonewpassdiv').style.display = 'none';
+            $('newpassdiv').style.display = 'block';
+            $('confirmpassword').value = "";
+            $('newpassword').value = "";
+            $('oldpassword').value = "";
+        }
+        else {
+            $('nonewpassdiv').style.display = 'block';
+            $('newpassdiv').style.display = 'none';
+        }
+    }
+    if (which === 'temp_sensor') {
+        if (value == 1 || value == 2) {
+            $('ds18-div').style.display = 'none';
+            $('ntc-div').style.display = 'block';
+
+        }
+        else {
+            $('ds18-div').style.display = 'block';
+            $('ntc-div').style.display = 'none';
+        }
+    }
+    if (which === 'cal_div')
+    {
+        if (value) {
+            $('nocal_div').style.display = 'none';
+            $('cal_div').style.display = 'block';
+        }
+        else {
+            $('nocal_div').style.display = 'block';
+            $('cal_div').style.display = 'none';
+        }
+    }
+    if (which === 'upload_service')
+    {
+        if (value == 0) //Gmail
+        {
+            $('nocal_div').style.display = 'none';
+            $('cal_div').style.display = 'block';
+        }
+        else if (value == 1)//Google Drive
+        {
+            $('nocal_div').style.display = 'block';
+            $('cal_div').style.display = 'none';
+        }
+        else if (value == 2)//IFFT
+        {
+            $('nocal_div').style.display = 'block';
+            $('cal_div').style.display = 'none';
+        }
+    }
+}
+function wifi_connect() {
+
+}
+
+function $(name) {
+    return document.getElementById(name);
+}
+
+function send() {
+    //not safe probably.
+    if ($('confirmpassword').value !== $('newpassword').value) {
+        alert('Passwords don\'t match.');
+        return;
+    }
+    var req = '/newpass?n=' + $('newpassword').value + '&o=' + $('oldpassword').value;
+    RequestData(req);
+}
+
+function saveconfig()
+{
+    var url = '/newconfig?config=';
+    url += config.send();
+    RequestData(url);
+
+})==="//##$$
+        ;
+}
+
 void GeneralLog(String message)
 {
     String _msg = "[";
@@ -1451,7 +2177,7 @@ void SendLargeFiles(AsyncWebServerRequest *request, String _filename)
 
     while (xSemaphoreTake(sd_mutex, (TickType_t)50) != 1)
     {
-    esp_task_wdt_reset();
+        esp_task_wdt_reset();
     }
 
     AsyncWebServerResponse *response = request->beginResponse(SD_MMC, _filename, getMIME(_filename));
@@ -1516,7 +2242,7 @@ void getTime()
     http.end();
 }
 
-float readTemperature()
+float readTemperature(bool raw = false)
 {
     if (Config.temp_sensor_type >= 3)
         return 0;
@@ -1569,8 +2295,12 @@ float readTemperature()
     {
         _temp = (float)random_temp / 10;
     }
+    if (!raw)
+    {
+        _temp = (float)_temp + Config.calibration;
+    }
 
-    return (float)_temp + Config.calibration;
+    return (float)_temp;
 }
 
 //most important
@@ -1830,11 +2560,11 @@ void handleSetTime(AsyncWebServerRequest *request)
 void handleWebServer(AsyncWebServerRequest *request)
 {
 
-    if (!request->authenticate(Config.www_username.c_str(), Config.www_password.c_str()))
-    {
-        request->requestAuthentication();
-        return;
-    }
+    // if (!request->authenticate(Config.www_username.c_str(), Config.www_password.c_str()))
+    // {
+    //     request->requestAuthentication();
+    //     return;
+    // }
 
     ///Check if file exists
     int a = millis();
@@ -1948,6 +2678,56 @@ void handleWebServer(AsyncWebServerRequest *request)
         handleNewRamp(request);
         request->send(200, "text/html", "<html><script>window.location.assign(\"/\")</script></html>");
     }
+    else if (apiname == "/dodo")
+    {
+        String message = "File Not Found\n\n";
+        message += "URI: ";
+        message += request->url();
+        message += "\nMethod: ";
+        message += request->method();
+        message += "\nArguments: ";
+        message += request->args();
+        message += "\n";
+        int params = request->params();
+
+        for (uint8_t i = 0; i < params; i++)
+        {
+            AsyncWebParameter *p = request->getParam(i);
+            if (p->isFile())
+            { //p->isPost() is also true
+                message += "FILE[";
+                message += p->name();
+                message += "]: ";
+                message += p->value();
+                message += ", size: ";
+                message += p->size();
+                message += '\n';
+            }
+            else if (p->isPost())
+            {
+                message += "POST[";
+                message += p->name();
+                message += "]: ";
+                message += p->value();
+                message += ", size: ";
+                message += p->size();
+                message += '\n';
+            }
+            else
+            {
+                message += "GET[";
+                message += p->name();
+                message += "]: ";
+                message += p->value();
+                message += ", size: ";
+                message += p->size();
+                message += '\n';
+
+            }
+            message += " " + request->argName(i) + ": " + request->arg(i) + "\n";
+        }
+        request->send(200, "text/html", message);
+    }
     else if (apiname == "/settime")
     {
         handleSetTime(request);
@@ -1978,10 +2758,10 @@ void handleWebServer(AsyncWebServerRequest *request)
         filename += request->arg("fileName");
         if (SD_MMC.exists(filename))
         {
-           SendLargeFiles(request,filename);
+            SendLargeFiles(request, filename);
         }
         else
-        request->send('error:filenotfound;');
+            request->send(200, "text/plain", "error:filenotfound;");
         if (debug.web)
         {
             Serial.print("Service Time: ");
@@ -2071,10 +2851,52 @@ void handleWebServer(AsyncWebServerRequest *request)
     }
     else if (apiname == "/reqwifisearch")
     {
+        WiFi.scanNetworks(true);
+        while (WiFi.scanComplete() < 0)
+        {
+            esp_task_wdt_reset();
+        }
+
         String msg = "wifiAP:";
-        //  msg += getApAvailables();
+        msg += getApAvailables();
         msg += ";";
         AsyncWebServerResponse *res = request->beginResponse(200, "text/plain", msg);
+        request->send(res);
+
+        if (debug.web)
+        {
+            Serial.print("Service Time: ");
+            Serial.print(millis() - a);
+            Serial.println("ms.");
+        }
+        return;
+    }
+    else if (apiname == "/newcaltest")
+    {
+        //new_cal:raw:cal;
+        String msg = "new_cal:";
+        float temp = readTemperature();
+        msg += temp;
+        msg += ':';
+        if (request->hasArg("cal"))
+        msg += temp + atof(request->arg("cal").c_str());
+        AsyncWebServerResponse *res = request->beginResponse(200, "text/plain", msg);
+        request->send(res);
+
+        if (debug.web)
+        {
+            Serial.print("Service Time: ");
+            Serial.print(millis() - a);
+            Serial.println("ms.");
+        }
+        return;
+    }
+        else if (apiname == "/newconfig")
+    {
+        //new_cal:raw:cal;
+        if (request->hasArg("config"))
+        Config.fromString(request->arg("config"));
+        AsyncWebServerResponse *res = request->beginResponse(200, "text/plain", "done");
         request->send(res);
 
         if (debug.web)
@@ -2234,18 +3056,18 @@ public:
 String getApAvailables()
 {
     String returnmsg = "";
-    byte numSsid = WiFi.scanNetworks();
-    Serial.print("Number of available WiFi networks discovered:");
-    Serial.println(numSsid);
+    byte numSsid = WiFi.scanComplete();
+    if (numSsid == 0xFE)
+    {
+        numSsid = WiFi.scanNetworks();
+    }
     for (byte i = 0; i < numSsid; i++)
     {
         returnmsg += WiFi.SSID(i);
         returnmsg += '=';
         returnmsg += WiFi.RSSI(i);
         returnmsg += ',';
-        esp_task_wdt_reset();
     }
-
     return returnmsg;
 }
 
@@ -2546,9 +3368,27 @@ void StandardTesting()
     StartRamp();
 }
 
+void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final){
+  if(!index){
+    Serial.print((String)"UploadStart: ");
+Serial.println(filename);
+  }
+  for(size_t i=0; i<len; i++){
+    Serial.write(data[i]);
+  }
+  if(final){
+    Serial.print((String)"UploadEnd: ");
+    Serial.print(filename );
+    Serial.print(",");
+    Serial.print(index);
+    Serial.print(",");
+    Serial.println(len); 
+  }
+}
+
 void setup()
 {
-   
+
     Serial.begin(115200); //Start Serial
 
     //Start SD Card
@@ -2600,7 +3440,6 @@ void setup()
     //Start SPIFFS
     pinMode(Config.RELAY_PIN, OUTPUT); //Set the Relay pin to output
 
-    
     WiFi.mode(WIFI_STA); //WiFi Station Mode
     WiFi.begin(Config.WIFI_SSID.c_str(), Config.WIFI_PASSWORD.c_str());
 
@@ -2684,6 +3523,7 @@ void setup()
     ArduinoOTA.onProgress(progressOTA);
     ArduinoOTA.onError(errorOTA);
     ArduinoOTA.begin();
+server.onFileUpload(handleUpload);
 
     GeneralLog("Booted");
     getTime();
@@ -2691,8 +3531,17 @@ void setup()
     sd_mutex = xSemaphoreCreateCounting(3, 3);
     if (sd_mutex == NULL)
     {
-        Serial.println("! NULL MUTEX !");
+        Serial.println("sd mutex = ! NULL MUTEX !");
     }
+    get_ap_mutex = xSemaphoreCreateBinary();
+
+    if (get_ap_mutex == NULL)
+    {
+        Serial.println("get ap mutex = ! NULL MUTEX !");
+    }
+    File_Writer("/Web/test.html", GetPage());
+    File_Writer("/Web/Settings.js", GetPage2());
+
     server.begin();
     Serial.println("HTTP server started");
 
@@ -2711,10 +3560,24 @@ void setup()
 
     Serial.print("Setup done. time: ");
     Serial.print(millis() - oldTime);
-    Serial.println("ms");    
+    Serial.println("ms");
 
     SysInfo.print(true);
-    
+    #ifdef DEBUGWEB
+    debug.web = true;
+    #endif
+    #ifdef DEBUGGENERAL
+    debug.general = true;
+    #endif
+    #ifdef DEBUGLOG
+    debug.log = true;
+    #endif
+    #ifdef DEBUGTEMP
+    debug.temp = true;
+    #endif
+    #ifdef DEBUGRAMP
+    debug.ramp = true;
+    #endif
 }
 
 void loop()
@@ -2724,6 +3587,7 @@ void loop()
     ArduinoOTA.handle();
     // request->handleClient();
     updateTemperatures();
+
     // Serial.print("run time: ");
     // Serial.print(millis() - time);
     // Serial.println("ms");
@@ -2809,9 +3673,21 @@ void loop()
         {
             Cache.setup();
         }
+         else if (s == "config")
+        {
+         Serial.println(Config.toString());
+        }
         else if (s == "led")
         {
             digitalWrite(4, !digitalRead(4));
+        }
+        else if (s == "time")
+        {
+            Serial.println(startup_time);
+        }
+        else if (s == "net")
+        {
+            Serial.print(WiFi.scanComplete());
         }
         else if (SD_MMC.exists(s))
         {

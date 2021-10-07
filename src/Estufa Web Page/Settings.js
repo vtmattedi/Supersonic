@@ -1,11 +1,32 @@
 RequestData('/loadconfig');
-RequestData('/reqwifisearch');
+RequestData('/reqwifisearch', 10000);
 var ReqInfo = setInterval(() => { RequestData('/systeminfo') }, 1500);
+var CalTimer;//Placeholder for the setInterval below;
 var ESP_Connected = true;
 var failedRequests = 0;
 var wifiAPs = [, ,]
 const sysinfo = new InfoCreator();
 const config = new Settings();
+
+const maxCheck = {
+    tolerance: 0,
+    // Will mantain temperature within this tolerance.
+    calibration: 0,
+    //Resolution of DS18b20 Sensor 
+    TEMPERATURE_RESOLUTION: [9, 12],
+    sample_freq: [1, 65535],
+
+    RELAY_PIN: [1, 39],
+    ONEWIRE_BUS: [1, 39],
+
+    NTC_BASE_RESISTANCE: [1, 4294967295],
+    NTC_BASE_TEMP: [-127, 127],
+    NTC_READ_PIN: [1, 39],
+    NTC_ENABLE_PIN: [-1, 39],
+    NTC_BETA: [1, 65535],
+
+    backup_freq: [1, 4294967295]
+}
 
 var test = "config:tolerance=0.50,calibration=0.00,TEMPERATURE_RESOLUTION=9,sample_freq=1,WIFI_SSID=MCarvalho,www_username=admin,WIFI_AP_SSID=ESP32,use_static_ip=0,static_ip=,enable_upload=0,UploadServiceType=0,UploadLogin=,enableCache=1,continousLog=1,enable_backup=0,backup_freq=0,lastbackup=0,RELAY_PIN=13,ONEWIRE_BUS=16,host_name=Estufa,WIFI_AP_PASSWORD=ESP32ESP32,;";
 
@@ -17,6 +38,7 @@ function InfoCreator() {
     this.internalTemp = 0;
     this.SPIFFS = 0;
     this.SPIFFSMax = 0;
+    this.bootTime = -1;
     this.load = function (params) {
         var value = "";
         var variable = "";
@@ -49,6 +71,8 @@ function InfoCreator() {
                         this.SPIFFSMax = parseInt(value);
                     else if (variable == "internalTemp")
                         this.internalTemp = parseFloat(value);
+                    else if (variable == "bootTime")
+                        this.bootTime = parseInt(value);
 
                     value = "";
                     variable = "";
@@ -84,7 +108,8 @@ function Settings() {
     this.tolerance = 0;
     // Will mantain temperature within this tolerance.
     this.calibration = 0;
-    //Resolution of DS18b20 Sensor this.TEMPERATURE_RESOLUTION = 9;
+    //Resolution of DS18b20 Sensor 
+    this.TEMPERATURE_RESOLUTION = 9;
 
     //Web Site Credentials
     this.www_username = "";
@@ -131,9 +156,14 @@ function Settings() {
     this.ADC_CORRECTION = "";
 
 
-    //Enables Cacheing; this.enableCache = true; this.continousLog = true;
+    //Enables Cacheing; 
+    this.enableCache = true;
+    this.continousLog = true;
 
-    //Backup Options this.enable_backup = false; this.backup_freq = 0; this.lastbackup = 0;
+    //Backup Options 
+    this.enable_backup = false;
+    this.backup_freq = 0;
+    this.lastbackup = 0;
 
     this.host_name = "";
 
@@ -206,7 +236,7 @@ function Settings() {
                     else if (variable == "temp_sensor_type")
                         this.temp_sensor_type = parseInt(value);
                     else if (variable == "NTC_BASE_RESISTANCE")
-                        this.NTC_BASE_RESISTANCE = parseInt(value);
+                        this.NTC_BASE_RESISTANCE = parseInt(value) / 1000;
                     else if (variable == "NTC_BASE_TEMP")
                         this.NTC_BASE_TEMP = parseInt(value);
                     else if (variable == "NTC_READ_PIN")
@@ -223,14 +253,90 @@ function Settings() {
             }
         }
     };
+
+    this.send = function (complete) {
+
+        var message = "";
+        message += "tolerance=";
+        message += this.tolerance;
+        message += ",calibration=";
+        message += this.calibration;
+        message += ",TEMPERATURE_RESOLUTION=";
+        message += this.TEMPERATURE_RESOLUTION;
+        message += ",sample_freq=";
+        message += this.sample_freq;
+        message += ",WIFI_SSID=";
+        message += this.WIFI_SSID;
+        if (complete) {
+            message += ",WIFI_PASSWORD=";
+            message += this.WIFI_PASSWORD;
+        }
+        message += ",www_username=";
+        message += this.www_username;
+        if (complete) {
+            message += ",www_password=";
+            message += this.www_password;
+        }
+        message += ",WIFI_AP_SSID=";
+        message += this.WIFI_AP_SSID;
+        if (complete) {
+            message += ",WIFI_AP_PASSWORD=";
+            message += this.WIFI_AP_PASSWORD;
+        }
+        message += ",use_static_ip=";
+        message += this.use_static_ip;
+        message += ",static_ip=";
+        message += this.static_ip;
+        message += ",enable_upload=";
+        message += this.enable_upload;
+        message += ",UploadServiceType=";
+        message += this.UploadServiceType;
+        message += ",UploadLogin=";
+        message += this.UploadLogin;
+        if (complete) {
+            message += ",UploadPassword=";
+            message += this.UploadPassword;
+        }
+        message += ",enableCache=";
+        message += this.enableCache;
+        message += ",continousLog=";
+        message += this.continousLog;
+        message += ",enable_backup=";
+        message += this.enable_backup;
+        message += ",backup_freq=";
+        message += this.backup_freq;
+        message += ",lastbackup=";
+        message += this.lastbackup;
+        message += ",RELAY_PIN=";
+        message += this.RELAY_PIN;
+        message += ",ONEWIRE_BUS=";
+        message += this.ONEWIRE_BUS;
+        message += ",host_name=";
+        message += this.host_name;
+        message += ",temp_sensor_type=";
+        message += this.temp_sensor_type;
+        message += ",NTC_BASE_RESISTANCE=";
+        message += this.NTC_BASE_RESISTANCE;
+        message += ",NTC_BASE_TEMP=";
+        message += this.NTC_BASE_TEMP;
+        message += ",NTC_READ_PIN=";
+        message += this.NTC_READ_PIN;
+        message += ",NTC_ENABLE_PIN=";
+        message += this.NTC_ENABLE_PIN;
+        message += ",NTC_BETA=";
+        message += this.NTC_BETA;
+        message += ",;";
+
+        return message;
+    };
 }
 
-function RequestData(whichdata) {
+function RequestData(whichdata, timeout) {
     if (typeof whichdata !== 'string') {
-        httpGetAsync("requpdate", ParseNewData);
+        httpGetAsync("requpdate", ParseNewData, timeout);
     }
     else
-        httpGetAsync(whichdata, ParseNewData);
+        httpGetAsync(whichdata, ParseNewData, timeout);
 }
 
 function ParseNewData(incomeString) {
@@ -246,11 +352,11 @@ function ParseNewData(incomeString) {
                 sysinfo.load(_args[1]);
 
             }
-            if (_args[0] == 'reqwifisearch') {
+            if (_args[0] == 'wifiAP') {
                 var aps = _args[1].split(',');
                 wifiAPs = [, ,];
-                for (var i = 0; i < aps.length; aps++) {
-                    if (aps[i].split('=')[0] != "" && aps[i].split('=')[i][1] != "" && aps[i].split('=')[0] != null && aps[i].split('=')[1] != null) {
+                for (var i = 0; i < aps.length - 1; aps++) {
+                    if (aps[i] !== '') {
                         wifiAPs[i][0] = aps[i].split('=')[0];
                         wifiAPs[i][1] = aps[i].split('=')[1];
 
@@ -279,7 +385,16 @@ function ParseNewData(incomeString) {
     }
 }
 
-function httpGetAsync(theUrl, callback) {
+
+function SetCalTimer(turnon) {
+
+    if (turnon)
+        CalTimer = setInterval(() => { RequestData('/newcaltest?cal=' + config.calibration) }, 500);
+    else
+        clearInterval(CalTimer);
+}
+
+function httpGetAsync(theUrl, callback, timeout) {
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.onreadystatechange = function () {
         if (xmlHttp.readyState == 4) {
@@ -305,6 +420,8 @@ function httpGetAsync(theUrl, callback) {
     }
     xmlHttp.open("GET", theUrl, true); // true for asynchronous
     xmlHttp.timeout = 1000;
+    if (typeof (timeout) === 'number')
+        xmlHttp.timeout = timeout
     try {
         xmlHttp.send();
 
@@ -319,13 +436,13 @@ window.onload = function () {
     generateCircle('circle_2', 'TEMP:', 0, 'internalTemp', '#d4ebd3', 'darkred', 'darkred', '&deg;C', 'map 20 80 0 100');
     generateCircle('circle_3', 'SD:', 0, 'sdcard', '#d4ebd3', 'darkgreen', 'darkgreen', '%');
     generateCircle('circle_4', 'SPIFFS:', 0, 'SPIFFS', '#d4ebd3', 'darkgreen', 'darkgreen', '%');
-    generateCircle('cal_raw_sensor', 'Raw:', 25, 'raw_temp', '#d4ebd3', 'red', 'red', '&deg;C', 'map 20 80 0 100');
-    generateCircle('cal_sensor', 'Calib:', 25, 'cal_temp', '#d4ebd3', 'darkred', 'darkred', '&deg;C', 'map 20 80 0 100');
+    generateCircle('cal_raw_sensor', 'Raw:', 0, 'raw_temp', '#d4ebd3', 'red', 'red', '&deg;C', 'map 20 80 0 100');
+    generateCircle('cal_sensor', 'Calib:', 0, 'cal_temp', '#d4ebd3', 'darkred', 'darkred', '&deg;C', 'map 20 80 0 100');
     setLabelSize('cal_temp', '45px');
     setLabelSize('raw_temp', '45px');
-    setnew('raw_temp', '25.25');
+    setnew('raw_temp', '0');
     setnewangle('raw_temp', 120);
-    setnew('cal_temp', '25.25');
+    setnew('cal_temp', '0');
     setnewangle('cal_temp', 120);
     setnewangle('ram', 120);
     setnewangle('internalTemp', 120);
@@ -333,7 +450,7 @@ window.onload = function () {
     setnewangle('SPIFFS', 120);
 
     ParseNewData(test);
-    draw('wifi');
+    draw('all');
 
 }
 
@@ -381,51 +498,183 @@ function showCalibrationDiv(show) {
     }
 }
 
+function inRange(id, value) {
+    if (typeof (value) !== 'number' || typeof (maxCheck[id]) === 'undefined')
+        return true;
+
+    if (value > maxCheck[id][1] || value < maxCheck[id][0])
+        return false;
+
+    return true;
+
+}
+
 function handleSettingsChanges(sender, area, type) {
     if (typeof (type) === 'undefined')
         type = 'common';
     var variable = "";
     variable += sender.id;
-    console.log(sender.id)
+    var value = parseFloat(sender.value);
 
-    if (type == 'common') {
-        config[variable] = sender.value;
-        draw(area);
+    console.log(sender.id, value, maxCheck[sender.id], inRange(sender.id, value))
+  
+    if (!inRange(sender.id, value)) {
+        var oldclass = $(sender.id).className;
+        $(sender.id).className = oldclass + " redbk";
+        setTimeout(() => {
+            $(sender.id).className = oldclass;
+        }, 4500)
+
+        alert('!Wrong Value!\nThe value of: '+sender.id + '\nshould be between: ' + maxCheck[sender.id][0] + ' and ' + maxCheck[sender.id][1] +'.');
+        sender.value = config[sender.id];
         return;
     }
-    if (type == 'suppressdraw')
-    {
+    if (type == 'common') {
         config[variable] = sender.value;
+        return;
+    }
+    if (type == 'suppressdraw') {
+        config[variable] = sender.value;
+        return;
+    }
+
+
+
+    if (type === 'slider') {
+        config[variable] = sender.checked;
         return;
     }
 }
 
+
 function draw(params) {
+
+    if (params == 'all') {
+        draw('wifi');
+        draw('general');
+        draw('files');
+        draw('backup');
+        draw('sensors');
+        draw('upload');
+    }
     if (params == 'wifi') {
-        $('wifi_ssid').value = config.WIFI_SSID;
+        $('wifi_ssid').value = config.WIFI_SSID;//custom ssid
         $('WIFI_PASSWORD').value = config.WIFI_PASSWORD;
-        $('ap_ssid').value = config.WIFI_AP_SSID;
+        $('WIFI_AP_SSID').value = config.WIFI_AP_SSID;
         $('WIFI_AP_PASSWORD').value = config.WIFI_AP_PASSWORD;
         $('ip_address').value = config.static_ip;
         $('use_static_ip').checked = config.use_static_ip;
 
         enable('ip_address', config.use_static_ip);
-        tooglewificustomssid($('wifi_custom_ssid').checked);
+        togglediv('wifi_ssid', $('wifi_custom_ssid').checked);
         //enable()
 
     }
+
+    if (params == 'general') {
+        $('host_name').value = config.host_name;
+        $('sample_freq').value = config.sample_freq;
+        $('enableCache').checked = config.enableCache;
+        $('continousLog').checked = config.continousLog;
+        $('RELAY_PIN').value = config.RELAY_PIN;
+
+    }
+    if (params == 'backup') {
+        $('enable_backup').checked = config.enable_backup;
+        $('backup_freq').value = config.backup_freq;
+        if (config.lastbackup > 0)
+            $('lastbackup').innerText = new Date(config.lastbackup * 1000).toDateString();
+        else
+            $('lastbackup').innerText = 'Never';
+    }
+    if (params == 'upload') {
+        $('enable_upload').checked = config.enable_upload;
+        $('UploadServiceType').value = config.UploadServiceType;
+        $('UploadLogin').value = config.UploadLogin;
+        $('UploadPassword').value = config.UploadPassword;
+        togglediv('upload_service', config.UploadServiceType);
+        //add auto upload
+    }
+    if (params == 'sensors') {
+        $('NTC_READ_PIN').value = config.NTC_READ_PIN;
+        $('NTC_ENABLE_PIN').value = config.NTC_ENABLE_PIN;
+        $('NTC_BASE_RESISTANCE').value = config.NTC_BASE_RESISTANCE;
+        $('NTC_BASE_TEMP').value = config.NTC_BASE_TEMP;
+        $('NTC_BETA').value = config.NTC_BETA;
+        $('ONEWIRE_BUS').value = config.ONEWIRE_BUS;
+        $('ADC_REQ_CORRECT').checked = config.ADC_REQ_CORRECT;
+        $('ADC_CORRECTION').value = config.ADC_CORRECTION;
+        $('ONEWIRE_BUS').value = config.ONEWIRE_BUS;
+        $('TEMPERATURE_RESOLUTION').value = config.TEMPERATURE_RESOLUTION;
+        $('calibration').value = config.calibration;
+        $('tolerance').value = config.tolerance;
+        $('temp_sensor_type').value = config.temp_sensor_type;
+        togglediv('temp_sensor', config.temp_sensor_type)
+    }
 }
 
-function tooglewificustomssid(value) {
-    if (value) {
-        $('wifi_ssid_list_div').style.display = 'none';
-        $('wifi_custom_ssid_div').style.display = 'flex'
+function togglediv(which, value) {
+    if (which === 'wifi_ssid') {
+        if (value) {
+            $('wifi_ssid_list_div').style.display = 'none';
+            $('wifi_custom_ssid_div').style.display = 'flex'
+        }
+        else {
+            $('wifi_ssid_list_div').style.display = 'flex';
+            $('wifi_custom_ssid_div').style.display = 'none'
+        }
     }
-    else {
-        $('wifi_ssid_list_div').style.display = 'flex';
-        $('wifi_custom_ssid_div').style.display = 'none'
+    if (which === 'change_password') {
+        if (value) {
+            $('nonewpassdiv').style.display = 'none';
+            $('newpassdiv').style.display = 'block';
+            $('confirmpassword').value = "";
+            $('newpassword').value = "";
+            $('oldpassword').value = "";
+        }
+        else {
+            $('nonewpassdiv').style.display = 'block';
+            $('newpassdiv').style.display = 'none';
+        }
     }
+    if (which === 'temp_sensor') {
+        if (value == 1 || value == 2) {
+            $('ds18-div').style.display = 'none';
+            $('ntc-div').style.display = 'block';
 
+        }
+        else {
+            $('ds18-div').style.display = 'block';
+            $('ntc-div').style.display = 'none';
+        }
+    }
+    if (which === 'cal_div') {
+        if (value) {
+            $('nocal_div').style.display = 'none';
+            $('cal_div').style.display = 'block';
+        }
+        else {
+            $('nocal_div').style.display = 'block';
+            $('cal_div').style.display = 'none';
+        }
+    }
+    if (which === 'upload_service') {
+        if (value == 0) //Gmail
+        {
+            $('nocal_div').style.display = 'none';
+            $('cal_div').style.display = 'block';
+        }
+        else if (value == 1)//Google Drive
+        {
+            $('nocal_div').style.display = 'block';
+            $('cal_div').style.display = 'none';
+        }
+        else if (value == 2)//IFFT
+        {
+            $('nocal_div').style.display = 'block';
+            $('cal_div').style.display = 'none';
+        }
+    }
 }
 function wifi_connect() {
 
@@ -433,4 +682,21 @@ function wifi_connect() {
 
 function $(name) {
     return document.getElementById(name);
+}
+
+function send() {
+    //not safe probably.
+    if ($('confirmpassword').value !== $('newpassword').value) {
+        alert('Passwords don\'t match.');
+        return;
+    }
+    var req = '/newpass?n=' + $('newpassword').value + '&o=' + $('oldpassword').value;
+    RequestData(req);
+}
+
+function saveconfig() {
+    var url = '/newconfig?config=';
+    url += config.send();
+    RequestData(url);
+
 }

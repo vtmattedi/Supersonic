@@ -1,0 +1,33 @@
+<head>
+    <script>
+  function FileUpload(file) {
+  const reader = new FileReader();
+  const xhr = new XMLHttpRequest();
+  this.xhr = xhr;
+
+  const self = this;
+  this.xhr.upload.addEventListener("progress", function(e) {
+        if (e.lengthComputable) {
+          const percentage = Math.round((e.loaded * 100) / e.total);
+          console.log(percentage);
+        }
+      }, false);
+
+  xhr.upload.addEventListener("load", function(e){
+
+      }, false);
+  xhr.open("POST", "/dodo");
+  xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
+  reader.onload = function(evt) {
+    xhr.send(evt.target.result);
+  };
+  reader.readAsBinaryString(file);
+}
+    </script>
+    </head>
+
+
+<form action="/dodo" method="POST" enctype="multipart/form-data">
+    <input name="fupdate" id="fone" type="file" />
+    <button type="submit" > go </button>
+</form>
