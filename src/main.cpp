@@ -2891,7 +2891,7 @@ void handleWebServer(AsyncWebServerRequest *request)
         }
         return;
     }
-        else if (apiname == "/newconfig")
+    else if (apiname == "/newconfig")
     {
         //new_cal:raw:cal;
         if (request->hasArg("config"))
