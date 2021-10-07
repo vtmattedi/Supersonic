@@ -32,7 +32,11 @@ webpage's name from the root of the SD card. After that, the process repeats on 
 '/loadconfig'  
 '/saveconfig'  
 '/systeminfo'  
-'/newconfig'  
+'/newconfig'  ''' 
+````
+hahaha;
+void c = new B();
+````
 
 ### Requests:
 '/requpdate' returns a snapshop of current Heat Ramp object Stringfied
