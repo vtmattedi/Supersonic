@@ -109,8 +109,8 @@ struct Settings
     String www_password = "admin";
 
     // Wifi Credentials
-    String WIFI_SSID = SSID;
-    String WIFI_PASSWORD = PASSWD;
+    String WIFI_SSID = WIFISSID;
+    String WIFI_PASSWORD = WIFIPASSWD;
     /*missing*/ bool forceAP = false;
     String WIFI_AP_SSID = "ESP32";
     String WIFI_AP_PASSWORD = "ESP32ESP32";

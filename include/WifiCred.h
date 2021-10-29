@@ -1,2 +1,2 @@
-#define  SSID "MCarvalho"
-#define PASSWD "salvador"
+#define WIFISSID "MCarvalho"
+#define WIFIPASSWD "salvador"
