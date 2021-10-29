@@ -1,2 +1,2 @@
-#define  SSID ""
-#define PASSWD ""
+#define WIFISSID ""
+#define WIFIPASSWD ""
