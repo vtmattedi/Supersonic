@@ -3,5 +3,5 @@
 .src/[BACKUP]/
 .test/
 ./src/Estufa Web Page/test.html
-./src/SDWriter.txt
+/src/SDWriter.txt
 /include/WifiCred.h
