@@ -1,2 +1,0 @@
-#define WIFISSID ""
-#define WIFIPASSWD ""
