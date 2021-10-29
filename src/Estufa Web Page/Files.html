@@ -37,10 +37,7 @@
     var currentName = "";
     var savedFileList = "";
     var showAllFiles = false;
-    var incomeCSV = {
-      next = false,
-      title = ''
-    }
+    var incomeCSV = false;
 
     function RequestData(whichdata, loading) {
       if (typeof whichdata !== 'string')
@@ -75,10 +72,10 @@
           // if (_args[0] == "CSV") {
           //   parseCSV(incomeString.split(';')[i]);
           // }
-          if (incomeCSV.next)
+          if (incomeCSV)
           {
             parseCSV(incomeString)
-            incomeCSV.false;
+            incomeCSV = false;
           }
           if (_args[0] == 'go') {
             go(_args[1]);
@@ -260,7 +257,7 @@
         }
         GraphOptions.title = currentName.trim('.csv');
         var url = "/csv?fileName=" + currentName;
-        incomeCSV.next = true;
+        incomeCSV = true;
         RequestData(url);
       }
     }

@@ -75,6 +75,18 @@ label {
     
 }
 
+.dropdownBox option{
+    width: var(--TextWidth);
+    height: var(--TextHeight);
+    font-size: 16px;
+    
+}
+.dropDown2 option{
+    width: calc(var(--TextWidth)/6px);
+    height: var(--TextHeight);
+    font-size: 16px;
+    
+}
 .wholepage
 {
     display: flex;
@@ -220,4 +232,21 @@ label {
 {
     from{ background-color: #ff0000;}
     to{}
+}
+
+.pinselector
+{
+    width: calc(var(--BoxSize)/4);
+    height: 30px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 18px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    text-align: center;
+}
+.pinselector option
+{
+    border-radius: 3px;
+    font-size: 18px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
 }

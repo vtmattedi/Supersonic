@@ -1,16 +1,14 @@
 /*                        TODO LIST
-* 1. Calibration Function
-* 4. Implement Configuration
-* 5. Heat up every step mode
-* 8. Finish up doPage and Main Page
-* 9. Translate.
-* 10. The-End (Web-Side)
-*
-*
-*
-*
-*
-*/
+ *
+ * 4.    Implement Configuration
+ * 5.    Heat up every step mode
+ * 11.   Finish Settings Page
+ * 12.   Do Start, Stop
+ * 8.    Finish up doPage and Main Page
+ * 9.    Translate.
+ * 10.   The-End (Web-Side)
+ *
+ */
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <ESPmDNS.h>
@@ -23,23 +21,24 @@
 #include "FS.h"
 #include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\.pio\libdeps\esp32dev\ESPAsyncWebServer-esphome\src\ESPAsyncWebServer.h>
 #include <DNSServer.h>
-#include "SD_MMC.h"
+//#include "SD.h"
+#include "SD.h"
 #include "esp_task_wdt.h"
-
+#include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\include\WifiCred.h>
 #define DEBUGWEB
 // #define DEBUGLOG
-// #define DEBUGGENERAL
+#define DEBUGGENERAL
 // #define DEBUGTEMP
 // #define DEBUGRAMP
 
 // Globals
 
-//protects the SD_MMC fs of acessing more than available free files descriptors
+// protects the SD fs of acessing more than available free files descriptors
 static SemaphoreHandle_t sd_mutex;
-static SemaphoreHandle_t get_ap_mutex;
+static uint8_t valid_adc_pins[] = {32, 33, 34, 35, 36, 37, 38, 39};
 
-#define HISTORY_SIZE 1000
-#define MAX_ADC_CORRECTION_EXPONENT 15
+#define HISTORY_SIZE 1000              // how many points of data are store
+#define MAX_ADC_CORRECTION_EXPONENT 15 // not actually nescessary, use to define array sizes
 #define MAX_STEPS 22
 #define default_relay_pin 13
 #define default_one_wire_bus 16
@@ -53,15 +52,15 @@ uint16_t DS18_CurrentIndex = 0;
 uint LastTime = 0;
 int cycle = 0;
 uint startup_time = 0;
-int random_temp = 300; //delete this after using
+int random_temp = 300; // delete this after using
 
 byte currentProg = 0;
 
-//Update Variables
+// Update Variables
 bool is_updating = false;
 float update_progress = 0;
 
-//Flags
+// Flags
 bool new_ramp = false;
 bool new_step = false;
 bool new_prog = false;
@@ -79,7 +78,7 @@ String getApAvailables();
 int oldMillis = 0;
 int oldLoopMillis = 0;
 
-//references for funcitons
+// references for funcitons
 String normalizedDayMonth();
 String getCurrentProcess();
 void StandardTesting();
@@ -102,16 +101,17 @@ struct Settings
     float tolerance = 0.5;
     // Will mantain temperature within this tolerance.
     float calibration = 0;
-    //Resolution of DS18b20 Sensor
+    // Resolution of DS18b20 Sensor
     byte TEMPERATURE_RESOLUTION = 9;
 
-    //Web Site Credentials
+    // Web Site Credentials
     String www_username = "admin";
     String www_password = "admin";
 
-    //Wifi Credentials
-    String WIFI_SSID = "MCarvalho";
-    String WIFI_PASSWORD = "salvador";
+    // Wifi Credentials
+    String WIFI_SSID = SSID;
+    String WIFI_PASSWORD = PASSWD;
+    /*missing*/ bool forceAP = false;
     String WIFI_AP_SSID = "ESP32";
     String WIFI_AP_PASSWORD = "ESP32ESP32";
 
@@ -119,21 +119,22 @@ struct Settings
     String static_ip = "";
 
     /*
-    * Available Services: Gmail = 0
-    *                    Google Drive = 1
-    */
+     * Available Services: Email = 0
+     *                     Google Drive = 1
+     *                     IFTTT = 2
+     */
     byte UploadServiceType = 0;
     bool enable_upload = false;
     String UploadLogin = "";
     String UploadPassword = "";
 
-    /*missing*/ bool auto_upload = false;
-    /*missing*/ uint auto_upload_freq = 0;
+    uint auto_upload_freq = 0;
+    bool auto_upload = false;
 
-    //Sample rate for logging
+    // Sample rate for logging
     uint16_t sample_freq = 1;
 
-    //Config of Pins
+    // Config of Pins
     uint8_t RELAY_PIN = 13;
     uint8_t ONEWIRE_BUS = 16;
 
@@ -148,16 +149,16 @@ struct Settings
     uint16_t NTC_BETA = 3450;
     int8_t NTC_BASE_TEMP = 25;
     uint8_t NTC_READ_PIN = 12;
-    uint8_t NTC_ENABLE_PIN = -1;
+    uint8_t NTC_ENABLE_PIN = 0;
 
-    /*missing*/ bool ADC_REQ_CORRECT = false;
-    /*missing*/ String ADC_CORRECTION = "1x0+2e-9x1+-3e-9x2+0.35e-9x5+3.5e-9x4+-0.513514546848464e-9x6+;";
+    bool ADC_REQ_CORRECT = false;
+    String ADC_CORRECTION = "1x0+2e-9x1+-3e-9x2+0.35e-9x5+3.5e-9x4+-0.513514546848464e-9x6+;";
 
-    //Enables Cacheing;
+    // Enables Cacheing;
     bool enableCache = true;
     bool continousLog = true;
 
-    //Backup Options
+    // Backup Options
     bool enable_backup = false;
     uint backup_freq = 0;
     uint lastbackup = 0;
@@ -165,8 +166,8 @@ struct Settings
     String host_name = "Estufa";
 
     /*Creates a string with the variables to be parsed elsewhere.
-    *@param complete: wheater or not you want to send passwords aswell.
-    */
+     *@param complete: wheater or not you want to send passwords aswell.
+     */
     String toString(bool complete = false)
     {
         String message = "";
@@ -242,12 +243,21 @@ struct Settings
         message += NTC_ENABLE_PIN;
         message += ",NTC_BETA=";
         message += NTC_BETA;
+        message += ",auto_upload=";
+        message += auto_upload;
+        message += ",auto_upload_freq=";
+        message += auto_upload_freq;
+        message += ",ADC_REQ_CORRECT=";
+        message += ADC_REQ_CORRECT;
+        message += ",ADC_CORRECTION=";
+        message += ADC_CORRECTION;
+
         message += ",;";
 
         return message;
     }
 
-    //Resets the config to  its hardcoded values
+    // Resets the config to  its hardcoded values
     void reset()
     {
         tolerance = 0.5;
@@ -259,7 +269,7 @@ struct Settings
         WIFI_PASSWORD = "salvador";
     }
 
-    //parse new values from a string.
+    // parse new values from a string.
     void fromString(String newConfig, bool partialUpdate = false)
     {
         if (!partialUpdate)
@@ -345,6 +355,14 @@ struct Settings
                         NTC_ENABLE_PIN = atoi(value.c_str());
                     else if (variable == "NTC_BETA")
                         NTC_BETA = atoi(value.c_str());
+                    else if (variable == "auto_upload")
+                        auto_upload = value == "1" ? true : false;
+                    else if (variable == "auto_upload_freq")
+                        auto_upload_freq = atoi(value.c_str());
+                    else if (variable == "ADC_REQ_CORRECT")
+                        ADC_REQ_CORRECT = value == "1" ? true : false;
+                    else if (variable == "ADC_CORRECTION")
+                        ADC_CORRECTION = value;
 
                     value = "";
                     variable = "";
@@ -352,10 +370,12 @@ struct Settings
                 }
             }
         }
+
+        // Validate Configs
     }
 
-    //Saves the current config to '/config.cfg' in the SD card
-    void save()
+    // Saves the current config to '/config.cfg' in the SD card
+    void save(bool useSPIFFSS = false)
     {
         String _setting = toString(true);
         String saveString = "";
@@ -365,7 +385,7 @@ struct Settings
         // Serial.println(_setting);
         // Serial.println(checksum(_setting));
         // Serial.println(saveString);
-        File_Writer("/config.cfg", saveString, false, false);
+        File_Writer("/config.cfg", saveString, false, useSPIFFSS);
         return;
     }
 
@@ -412,18 +432,41 @@ private:
 
         return totalSum % base;
     }
+
+    // Makes Sure that this config is valid
+    void checkConfigs()
+    {
+        // Check if the ntc pin is valid
+        if (!contains(valid_adc_pins, NTC_READ_PIN))
+        {
+            temp_sensor_type = 0; // Disable NTC mode
+            NTC_READ_PIN = 33;
+        }
+    }
+
+    bool contains(uint8_t array[], uint8_t value)
+    {
+        size_t array_size = sizeof(array) / sizeof(uint8_t);
+
+        for (size_t i = 0; i < array_size; i++)
+        {
+            if (array[i] == value)
+                return true;
+        }
+        return false;
+    }
 };
 
 struct ADCCorrector
 {
 private:
     /*Coefficients array. Expoents are the indexes
-    * avg calc time @ max expoent 6 : double 13us, float 4us
-    */
+     * avg calc time @ max expoent 6 : double 13us, float 4us
+     */
     double Coeffs[MAX_ADC_CORRECTION_EXPONENT];
 
 public:
-    //Simpler pow functions for integers
+    // Simpler pow functions for integers
     uint myPow(uint value, byte expoent)
     {
         uint finalValue = 1;
@@ -439,13 +482,13 @@ public:
         return finalValue;
     }
 
-    /*Get Coefficients from a String 
-    * @param Polynome: Should be in the format "'coeff'x'expoent'+"
-    * do note that the + sign at the end of every x factor is nescessary.
-    * The coefficients found will be store at the index of their expoent.
-    * you can change @param MAX_ADC_CORRECTION_EXPONENT as it will determine
-    * the boundries of the object.
-    */
+    /*Get Coefficients from a String
+     * @param Polynome: Should be in the format "'coeff'x'expoent'+"
+     * do note that the + sign at the end of every x factor is nescessary.
+     * The coefficients found will be store at the index of their expoent.
+     * you can change @param MAX_ADC_CORRECTION_EXPONENT as it will determine
+     * the boundries of the object.
+     */
     void fromString(String Polynome)
     {
 
@@ -490,7 +533,7 @@ public:
         }
     }
 
-    //Sets all values in the array to 0;
+    // Sets all values in the array to 0;
     void setup()
     {
         for (size_t i = 0; i < MAX_ADC_CORRECTION_EXPONENT; i++)
@@ -499,7 +542,7 @@ public:
         }
     }
 
-    //Returns the ajusted value (passes the @param value by the polynome stored)
+    // Returns the ajusted value (passes the @param value by the polynome stored)
     uint16_t calculate(uint16_t value)
     {
         float trueValue = 0;
@@ -510,8 +553,8 @@ public:
         return round(trueValue);
     }
 
-    //Prints the current polynome to Serial
-    //a different HardwareSerial can be Specified
+    // Prints the current polynome to Serial
+    // a different HardwareSerial can be Specified
     void print(HardwareSerial serial = Serial)
     {
 
@@ -534,7 +577,7 @@ public:
         serial.println();
     }
 
-    //Produces a String with the current polynome that can be used to recreate this object.
+    // Produces a String with the current polynome that can be used to recreate this object.
     String toString()
     {
         String msg = "";
@@ -582,7 +625,7 @@ public:
     bool running = false;
     bool finished = false;
     bool configured = false;
-    //Prints the Heatramp Object
+    // Prints the Heatramp Object
     void print()
     {
         String ramp = "";
@@ -611,7 +654,7 @@ public:
 
         Serial.println(ramp);
     }
-    //Sets the Log Filename
+    // Sets the Log Filename
     void startLogs()
     {
         generateCsv();
@@ -624,10 +667,10 @@ public:
         String baseName = "/Logs/" + projectName;
         bool nameAvailable = false;
         u_int nextName = 1;
-        if (!SD_MMC.exists(baseName + ".csv"))
+        if (!SD.exists(baseName + ".csv"))
         {
             csvFile = baseName + ".csv";
-            //createLogFile(logFile);
+            // createLogFile(logFile);
             nameAvailable = true;
         }
 
@@ -635,7 +678,7 @@ public:
         {
             String newName = baseName + "(" + nextName + ").csv";
             nextName++;
-            if (!SD_MMC.exists(newName))
+            if (!SD.exists(newName))
             {
                 csvFile = newName;
                 nameAvailable = true;
@@ -646,7 +689,7 @@ public:
         Serial.println(csvFile);
         File_Writer(csvFile, "'Time Stamp','Relative Time','Temperature','Set Temperature','Relay Status','Current Step','Comment'\n", true, false);
     }
-    //Starts the Log file
+    // Starts the Log file
     void generateLog()
     {
         if (!is_SD_Mount)
@@ -657,7 +700,7 @@ public:
         baseName += "[";
         baseName += normalizedDayMonth();
         baseName += "]";
-        if (!SD_MMC.exists(baseName + ".log"))
+        if (!SD.exists(baseName + ".log"))
         {
             logFile = baseName + ".log";
             nameAvailable = true;
@@ -667,7 +710,7 @@ public:
         {
             String newName = baseName + "(" + nextName + ").csv";
             nextName++;
-            if (!SD_MMC.exists(newName))
+            if (!SD.exists(newName))
             {
                 logFile = newName;
                 nameAvailable = true;
@@ -679,7 +722,7 @@ public:
         Serial.println("'. Time, Temp, SetTemp, Relay, CurrentStep");
         File_Writer(logFile, "Time,Temperature,Set Temperature, Relay Status, Current Step\n", true, false);
     }
-    //Calculate the StepTimes array
+    // Calculate the StepTimes array
     void calculateStepTimes()
     {
         Serial.println("Calculating StepTimes: ");
@@ -696,7 +739,7 @@ public:
             Serial.println(StepsTimes[i]);
         }
     }
-    //logs the temperature and all the variables to a csv file associated to your projectname.
+    // logs the temperature and all the variables to a csv file associated to your projectname.
     void csv(float temperature, bool RelayStatus, String comment = "")
     {
         String Message = "";
@@ -745,7 +788,7 @@ public:
         // _message += "] ";
         // File_Writer(logFile, _message, true, false);
     }
-    //Resets the HeatRamp Object --not otimized
+    // Resets the HeatRamp Object --not otimized
     void reset()
     {
         Serial.println("Reseting HeatRamp...");
@@ -772,7 +815,7 @@ public:
 
         return;
     }
-    //Flags
+    // Flags
 
     String toString()
     {
@@ -947,10 +990,10 @@ struct HtmlCache
             return false;
         if (!is_SD_Mount)
             return false;
-        if (!SD_MMC.exists(filename))
+        if (!SD.exists(filename))
             return false;
         Keys[index] = key;
-        File _file = SD_MMC.open(filename);
+        File _file = SD.open(filename);
         CachedPages[index] = _file.readString();
         _file.close();
         return true;
@@ -996,7 +1039,7 @@ private:
 struct Info
 {
     byte ram = 0;
-    byte SD = 0;
+    byte SDusage = 0;
     byte SPIFFS_Used = 0;
     float internalTemp = 0;
 
@@ -1009,9 +1052,9 @@ struct Info
         {
 
             _temp = 0;
-            _temp = (float)SD_MMC.usedBytes() / SD_MMC.totalBytes() * 100;
+            _temp = (float)SD.usedBytes() / SD.totalBytes() * 100;
 
-            SD = round(_temp);
+            SDusage = round(_temp);
         }
 
         if (is_SPIFFSS_Mount)
@@ -1023,8 +1066,8 @@ struct Info
             SPIFFS_Used = round(_temp);
         }
 
-        //Implement DS18 internal Temp
-        internalTemp = random(internalTemp - 5, internalTemp + 5); //delete after example
+        // Implement DS18 internal Temp
+        internalTemp = random(internalTemp - 5, internalTemp + 5); // delete after example
     }
 
     String toString(bool SendMax = false)
@@ -1032,7 +1075,7 @@ struct Info
         update();
         String Message = "";
         Message += "SD=";
-        Message += SD;
+        Message += SDusage;
         Message += ",SPIFFS=";
         Message += SPIFFS_Used;
         Message += ",ram=";
@@ -1040,11 +1083,13 @@ struct Info
         if (SendMax)
         {
             Message += ",SDMax=";
-            Message += double(SD_MMC.totalBytes());
+            Message += double(SD.totalBytes());
             Message += ",ramMax=";
             Message += ESP.getHeapSize();
             Message += ",SPIFFSMax=";
             Message += SPIFFS.totalBytes();
+            Message += ",bootTime=";
+            Message += startup_time;
         }
         Message += ",internalTemp=";
         Message += internalTemp;
@@ -1067,13 +1112,23 @@ struct Info
         }
         Serial.println();
         Serial.print("SD Usage: ");
-        Serial.print(SD);
+        Serial.print(SDusage);
         Serial.print("%");
         if (DisplayMax)
         {
             Serial.print(" of ");
-            Serial.print((double)SD_MMC.totalBytes() / 1024 / 1024);
+            Serial.print((double)SD.totalBytes() / 1024 / 1024);
             Serial.print("Mb.");
+        }
+        Serial.println();
+        Serial.print("SPIFFS Usage: ");
+        Serial.print(SPIFFS_Used);
+        Serial.print("%");
+        if (DisplayMax)
+        {
+            Serial.print(" of ");
+            Serial.print((double)SPIFFS.totalBytes() / 1024);
+            Serial.print("kb.");
         }
         Serial.println();
         Serial.print("Temperature around the ESP: ");
@@ -1184,714 +1239,13 @@ String GetSdFileSafe(String filename)
     {
         esp_task_wdt_reset();
     }
-    File _file = SD_MMC.open(filename);
+    File _file = SD.open(filename);
 
     file = _file.readString();
     _file.close();
 
     xSemaphoreGive(sd_mutex);
     return file;
-}
-
-String GetPage()
-{
-    return
-        //##$$test.html
-R"===(<head>
-    <script>
-  function FileUpload(file) {
-  const reader = new FileReader();
-  const xhr = new XMLHttpRequest();
-  this.xhr = xhr;
-
-  const self = this;
-  this.xhr.upload.addEventListener("progress", function(e) {
-        if (e.lengthComputable) {
-          const percentage = Math.round((e.loaded * 100) / e.total);
-          console.log(percentage);
-        }
-      }, false);
-
-  xhr.upload.addEventListener("load", function(e){
-
-      }, false);
-  xhr.open("POST", "/dodo");
-  xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
-  reader.onload = function(evt) {
-    xhr.send(evt.target.result);
-  };
-  reader.readAsBinaryString(file);
-}
-    </script>
-    </head>
-
-
-<form action="/dodo" method="POST" enctype="multipart/form-data">
-    <input name="fupdate" id="fone" type="file" />
-    <button type="submit" > go </button>
-</form>)==="//##$$
-        ;
-}
-
-String GetPage2()
-{
-    return
-        //##$$Settings.js
-R"===(RequestData('/loadconfig');
-RequestData('/reqwifisearch',10000);
-var ReqInfo = setInterval(() => { RequestData('/systeminfo') }, 1500);
-var ESP_Connected = true;
-var failedRequests = 0;
-var wifiAPs = [, ,]
-const sysinfo = new InfoCreator();
-const config = new Settings();
-
-var test = "config:tolerance=0.50,calibration=0.00,TEMPERATURE_RESOLUTION=9,sample_freq=1,WIFI_SSID=MCarvalho,www_username=admin,WIFI_AP_SSID=ESP32,use_static_ip=0,static_ip=,enable_upload=0,UploadServiceType=0,UploadLogin=,enableCache=1,continousLog=1,enable_backup=0,backup_freq=0,lastbackup=0,RELAY_PIN=13,ONEWIRE_BUS=16,host_name=Estufa,WIFI_AP_PASSWORD=ESP32ESP32,;";
-
-function InfoCreator() {
-    this.ram = 0;
-    this.ramMax = 0;
-    this.SD = 0;
-    this.SDMax = 0;
-    this.internalTemp = 0;
-    this.SPIFFS = 0;
-    this.SPIFFSMax = 0;
-    this.load = function (params) {
-        var value = "";
-        var variable = "";
-        var nextChar;
-        var isValue = false;
-
-        for (var i = 0; i < params.length; i++) {
-            nextChar = params[i];
-            if (!isValue) {
-                if (nextChar != '=')
-                    variable += nextChar;
-                else
-                    isValue = true;
-            }
-            else {
-                if (nextChar != ',')
-                    value += nextChar;
-                else {
-                    if (variable == "SD")
-                        this.SD = parseInt(value);
-                    else if (variable == "SDMax")
-                        this.SDMax = parseInt(value);
-                    else if (variable == "ram")
-                        this.ram = parseInt(value);
-                    else if (variable == "ramMax")
-                        this.ramMax = parseInt(value);
-                    else if (variable == "SPIFFS")
-                        this.SPIFFS = parseInt(value);
-                    else if (variable == "SPIFFSMax")
-                        this.SPIFFSMax = parseInt(value);
-                    else if (variable == "internalTemp")
-                        this.internalTemp = parseFloat(value);
-
-                    value = "";
-                    variable = "";
-                    isValue = false;
-                }
-            }
-        }
-        this.update();
-    };
-    this.update = function () {
-        setnew('internalTemp', this.internalTemp);
-
-        if (ram >= 85)
-            setnew('ram', this.ram, this.ram, 'darkred', 'darkred');
-        else
-            setnew('ram', this.ram, this.ram, 'darkblue', 'darkblue');
-
-        if (ram >= 85)
-            setnew('sdcard', this.SD, this.SD, 'darkred', 'darkred');
-        else
-            setnew('sdcard', this.SD, this.SD, 'darkgreen', 'darkgreen');
-
-        if (ram >= 85)
-            setnew('SPIFFS', this.SPIFFS, this.SPIFFS, 'darkred', 'darkred');
-        else
-            setnew('SPIFFS', this.SPIFFS, this.SPIFFS, 'darkgreen', 'darkgreen');
-
-
-    };
-}
-
-function Settings() {
-    this.tolerance = 0;
-    // Will mantain temperature within this tolerance.
-    this.calibration = 0;
-    //Resolution of DS18b20 Sensor 
-    this.TEMPERATURE_RESOLUTION = 9;
-
-    //Web Site Credentials
-    this.www_username = "";
-    this.www_password = "";
-
-    //Wifi Credentials
-    this.WIFI_SSID = "";
-    this.WIFI_PASSWORD = "";
-    this.WIFI_AP_SSID = "";
-    this.WIFI_AP_PASSWORD = "";
-    this.use_static_ip = false;
-    this.static_ip = "";
-
-    /*
-    * Available Services: Gmail = 0
-    *                    Google Drive = 1
-    */
-    this.enable_upload = false;
-    this.UploadServiceType = 0;
-    this.UploadLogin = "";
-    this.UploadPassword = "";
-
-    //Sample rate for logging
-    this.sample_freq = 0;
-
-    //Config of Pins
-    this.RELAY_PIN = 0;
-    this.ONEWIRE_BUS = 0;
-
-
-    /*
-        0 = DS1820
-        1 = DS1820 High Temp
-        2 = NTC thermopar
-    */
-    this.temp_sensor_type = 0;
-
-    this.NTC_BASE_RESISTANCE = 0;
-    this.NTC_BASE_TEMP = 0;
-    this.NTC_READ_PIN = 0;
-    this.NTC_ENABLE_PIN = 0;
-    this.NTC_BETA = 0;
-    this.ADC_REQ_CORRECT = false;
-    this.ADC_CORRECTION = "";
-
-
-    //Enables Cacheing; 
-    this.enableCache = true;
-    this.continousLog = true;
-
-    //Backup Options 
-    this.enable_backup = false;
-    this.backup_freq = 0;
-    this.lastbackup = 0;
-
-    this.host_name = "";
-
-    this.load = function (newConfig) {
-
-        var value = "";
-        var variable = "";
-        var nextChar;
-        var isValue = false;
-        for (var i = 0; i < newConfig.length; i++) {
-            nextChar = newConfig[i];
-            if (!isValue) {
-                if (nextChar != '=')
-                    variable += nextChar;
-                else
-                    isValue = true;
-            }
-            else {
-                if (nextChar != ',')
-                    value += nextChar;
-                else {
-                    if (variable == "tolerance")
-                        this.tolerance = parseFloat(value);
-                    else if (variable == "calibration")
-                        this.calibration = parseFloat(value);
-                    else if (variable == "WIFI_SSID")
-                        this.WIFI_SSID = value;
-                    else if (variable == "WIFI_PASSWORD")
-                        this.WIFI_PASSWORD = value;
-                    else if (variable == "WIFI_AP_SSID")
-                        this.WIFI_AP_SSID = value;
-                    else if (variable == "WIFI_AP_PASSWORD")
-                        this.WIFI_AP_PASSWORD = value;
-                    else if (variable == "www_username")
-                        this.www_username = value;
-                    else if (variable == "www_password")
-                        this.www_password = value;
-                    else if (variable == "TEMPERATURE_RESOLUTION")
-                        this.TEMPERATURE_RESOLUTION = parseInt(value);
-                    else if (variable == "sample_freq")
-                        this.sample_freq = parseInt(value);
-                    else if (variable == "use_static_ip ")
-                        this.use_static_ip = value == "1" ? true : false;
-                    else if (variable == "static_ip")
-                        this.static_ip = value;
-                    else if (variable == "enableCache")
-                        this.enableCache = value == "1" ? true : false;
-                    else if (variable == "continousLog")
-                        this.continousLog = value == "1" ? true : false;
-                    else if (variable == "enable_backup")
-                        this.enable_backup = value == "1" ? true : false;
-                    else if (variable == "backup_freq")
-                        this.backup_freq = parseInt(value);
-                    else if (variable == "lastbackup")
-                        this.lastbackup = parseInt(value);
-                    else if (variable == "host_name")
-                        this.host_name = value;
-                    else if (variable == "RELAY_PIN")
-                        this.RELAY_PIN = parseInt(value);
-                    else if (variable == "ONEWIRE_BUS")
-                        this.ONEWIRE_BUS = parseInt(value);
-                    else if (variable == "UploadServiceType")
-                        this.UploadServiceType = parseInt(value);
-                    else if (variable == "enable_upload")
-                        this.enable_upload = value == "1" ? true : false;
-                    else if (variable == "UploadLogin")
-                        this.UploadLogin = value;
-                    else if (variable == "UploadPassword")
-                        this.UploadPassword = value;
-                    else if (variable == "temp_sensor_type")
-                        this.temp_sensor_type = parseInt(value);
-                    else if (variable == "NTC_BASE_RESISTANCE")
-                        this.NTC_BASE_RESISTANCE = parseInt(value);
-                    else if (variable == "NTC_BASE_TEMP")
-                        this.NTC_BASE_TEMP = parseInt(value);
-                    else if (variable == "NTC_READ_PIN")
-                        this.NTC_READ_PIN = parseInt(value);
-                    else if (variable == "NTC_ENABLE_PIN")
-                        this.NTC_ENABLE_PIN = parseInt(value);
-                    else if (variable == "NTC_BETA")
-                        this.NTC_BETA = parseInt(value);
-
-                    value = "";
-                    variable = "";
-                    isValue = false;
-                }
-            }
-        }
-    };
-
-    this.send = function (complete) {
-
-            var message = "";
-            message += "tolerance=";
-            message += this.tolerance;
-            message += ",calibration=";
-            message += this.calibration;
-            message += ",TEMPERATURE_RESOLUTION=";
-            message += this.TEMPERATURE_RESOLUTION;
-            message += ",sample_freq=";
-            message += this.sample_freq;
-            message += ",WIFI_SSID=";
-            message += this.WIFI_SSID;
-            if (complete)
-            {
-                message += ",WIFI_PASSWORD=";
-                message += this.WIFI_PASSWORD;
-            }
-            message += ",www_username=";
-            message += this.www_username;
-            if (complete)
-            {
-                message += ",www_password=";
-                message += this.www_password;
-            }
-            message += ",WIFI_AP_SSID=";
-            message += this.WIFI_AP_SSID;
-            if (complete)
-            {
-                message += ",WIFI_AP_PASSWORD=";
-                message += this.WIFI_AP_PASSWORD;
-            }
-            message += ",use_static_ip=";
-            message += this.use_static_ip;
-            message += ",static_ip=";
-            message += this.static_ip;
-            message += ",enable_upload=";
-            message += this.enable_upload;
-            message += ",UploadServiceType=";
-            message += this.UploadServiceType;
-            message += ",UploadLogin=";
-            message += this.UploadLogin;
-            if (complete)
-            {
-                message += ",UploadPassword=";
-                message += this.UploadPassword;
-            }
-            message += ",enableCache=";
-            message += this.enableCache;
-            message += ",continousLog=";
-            message += this.continousLog;
-            message += ",enable_backup=";
-            message += this.enable_backup;
-            message += ",backup_freq=";
-            message += this.backup_freq;
-            message += ",lastbackup=";
-            message += this.lastbackup;
-            message += ",RELAY_PIN=";
-            message += this.RELAY_PIN;
-            message += ",ONEWIRE_BUS=";
-            message += this.ONEWIRE_BUS;
-            message += ",host_name=";
-            message += this.host_name;
-            message += ",temp_sensor_type=";
-            message += this.temp_sensor_type;
-            message += ",NTC_BASE_RESISTANCE=";
-            message += this.NTC_BASE_RESISTANCE;
-            message += ",NTC_BASE_TEMP=";
-            message += this.NTC_BASE_TEMP;
-            message += ",NTC_READ_PIN=";
-            message += this.NTC_READ_PIN;
-            message += ",NTC_ENABLE_PIN=";
-            message += this.NTC_ENABLE_PIN;
-            message += ",NTC_BETA=";
-            message += this.NTC_BETA;
-            message += ",;";
-    
-            return message;
-        };
-}
-
-function RequestData(whichdata, timeout) {
-    if (typeof whichdata !== 'string') {
-        httpGetAsync("requpdate", ParseNewData, timeout);
-    }
-    else
-        httpGetAsync(whichdata, ParseNewData, timeout);
-}
-
-function ParseNewData(incomeString) {
-    try {
-
-        for (var i = 0; i < incomeString.split(';').length; i++) {
-            var _args = incomeString.split(';')[i].split(':');
-            if (_args[0] == 'config') {
-                config.load(_args[1]);
-            }
-
-            if (_args[0] == 'sysinfo') {
-                sysinfo.load(_args[1]);
-
-            }
-            if (_args[0] == 'wifiAP') {
-                var aps = _args[1].split(',');
-                wifiAPs = [, ,];
-                for (var i = 0; i < aps.length -1; aps++) {
-                    if (aps[i] !== '') {
-                        wifiAPs[i][0] = aps[i].split('=')[0];
-                        wifiAPs[i][1] = aps[i].split('=')[1];
-
-                    }
-                }
-
-            }
-            if (_args[0] == 'cal_temp') {
-                if (!isNaN((parseFloat(_args[1]))))
-                    setnew('raw_temp', _args[1]);
-                if (!isNaN((parseFloat(_args[2]))))
-                    setnew('cal_temp', _args[2]);
-            }
-            if (_args[0] == 'error') {
-                alert(_args[1]);
-            }
-
-        }
-
-
-    }
-
-
-    catch (err) {
-        console.log(err);
-    }
-}
-
-function httpGetAsync(theUrl, callback, timeout) {
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function () {
-        if (xmlHttp.readyState == 4) {
-            if (xmlHttp.status == 200) {
-                callback(xmlHttp.responseText);
-                if (!ESP_Connected) {
-                    ESP_Connected = true;
-                    changeESPConnected(ESP_Connected);
-                }
-                failedRequests = 0;
-            }
-            else {
-                if (ESP_Connected) {
-                    failedRequests++;
-                    if (failedRequests >= 3) {
-                        ESP_Connected = false;
-                        changeESPConnected(ESP_Connected);
-                    }
-                }
-            }
-        }
-
-    }
-    xmlHttp.open("GET", theUrl, true); // true for asynchronous
-    xmlHttp.timeout = 1000;
-    if (typeof (timeout) === 'number')
-        xmlHttp.timeout = timeout
-    try {
-        xmlHttp.send();
-
-    } catch (error) {
-        console.log(error);
-    }
-
-}
-
-window.onload = function () {
-    generateCircle('circle_1', 'RAM:', 0, 'ram', '#d4ebd3', 'darkblue', 'darkblue', '%');
-    generateCircle('circle_2', 'TEMP:', 0, 'internalTemp', '#d4ebd3', 'darkred', 'darkred', '&deg;C', 'map 20 80 0 100');
-    generateCircle('circle_3', 'SD:', 0, 'sdcard', '#d4ebd3', 'darkgreen', 'darkgreen', '%');
-    generateCircle('circle_4', 'SPIFFS:', 0, 'SPIFFS', '#d4ebd3', 'darkgreen', 'darkgreen', '%');
-    generateCircle('cal_raw_sensor', 'Raw:', 0, 'raw_temp', '#d4ebd3', 'red', 'red', '&deg;C', 'map 20 80 0 100');
-    generateCircle('cal_sensor', 'Calib:', 0, 'cal_temp', '#d4ebd3', 'darkred', 'darkred', '&deg;C', 'map 20 80 0 100');
-    setLabelSize('cal_temp', '45px');
-    setLabelSize('raw_temp', '45px');
-    setnew('raw_temp', '0');
-    setnewangle('raw_temp', 120);
-    setnew('cal_temp', '0');
-    setnewangle('cal_temp', 120);
-    setnewangle('ram', 120);
-    setnewangle('internalTemp', 120);
-    setnewangle('sdcard', 120);
-    setnewangle('SPIFFS', 120);
-
-    ParseNewData(test);
-    draw('all');
-
-}
-
-function changeESPConnected(isESPConnected) {
-    if (typeof (isESPConnected) === 'undefined')
-        return;
-
-    if (isESPConnected)//do Online stuff
-    {
-
-
-        ESP_Connected = true;
-    }
-    else//do Offline stuff 
-    {
-        ESP_Connected = false;
-
-    }
-
-}
-
-function animatereconect(size) {
-
-    if (!ESP_Connected)
-        setTimeout(() => { animatereconect(size) }, 500);
-}
-
-function enable(id, value) {
-    if (value)
-        $(id).removeAttribute("disabled");
-    else
-        $(id).setAttribute("disabled", "disabled");
-
-}
-
-function showCalibrationDiv(show) {
-    if (show) //Show Calibration Div
-    {
-        document.getElementById("cal_div").style.display = "block";
-    }
-    else //Hide Calibration Div
-    {
-        document.getElementById("cal_div").style.display = "none";
-
-    }
-}
-
-function handleSettingsChanges(sender, area, type) {
-    if (typeof (type) === 'undefined')
-        type = 'common';
-    var variable = "";
-    variable += sender.id;
-
-    console.log(sender.id, sender.value)
-
-    if (type == 'common') {
-        config[variable] = sender.value;
-        draw(area);
-        return;
-    }
-    if (type == 'suppressdraw') {
-        config[variable] = sender.value;
-        return;
-    }
-
-
-
-    if (type === 'slider') {
-        config[variable] = sender.checked;
-        draw(area);
-        return;
-    }
-}
-
-function draw(params) {
-
-    if (params == 'all') {
-        draw('wifi');
-        draw('general');
-        draw('files');
-        draw('backup');
-        draw('sensors');
-        draw('upload');
-    }
-    if (params == 'wifi') {
-        $('wifi_ssid').value = config.WIFI_SSID;//custom ssid
-        $('WIFI_PASSWORD').value = config.WIFI_PASSWORD;
-        $('WIFI_AP_SSID').value = config.WIFI_AP_SSID;
-        $('WIFI_AP_PASSWORD').value = config.WIFI_AP_PASSWORD;
-        $('ip_address').value = config.static_ip;
-        $('use_static_ip').checked = config.use_static_ip;
-
-        enable('ip_address', config.use_static_ip);
-        togglediv('wifi_ssid', $('wifi_custom_ssid').checked);
-        //enable()
-
-    }
-
-    if (params == 'general') {
-        $('host_name').value = config.host_name;
-        $('sample_freq').value = config.sample_freq;
-        $('enableCache').checked = config.enableCache;
-        $('continousLog').checked = config.continousLog;
-        $('RELAY_PIN').value = config.RELAY_PIN;
-
-    }
-    if (params == 'backup') {
-        $('enable_backup').checked = config.enable_backup;
-        $('backup_freq').value = config.backup_freq;
-        if (config.lastbackup > 0)
-            $('lastbackup').innerText = new Date(config.lastbackup * 1000).toDateString();
-        else
-            $('lastbackup').innerText = 'Never';
-    }
-    if (params == 'upload') {
-        $('enable_upload').checked = config.enable_upload;
-        $('UploadServiceType').value = config.UploadServiceType;
-        $('UploadLogin').value = config.UploadLogin;
-        $('UploadPassword').value = config.UploadPassword;
-        togglediv('upload_service', config.UploadServiceType);
-        //add auto upload
-    }
-    if (params == 'sensors') {
-        $('NTC_READ_PIN').value = config.NTC_READ_PIN;
-        $('NTC_ENABLE_PIN').value = config.NTC_ENABLE_PIN;
-        $('NTC_BASE_RESISTANCE').value = config.NTC_BASE_RESISTANCE;
-        $('NTC_BASE_TEMP').value = config.NTC_BASE_TEMP;
-        $('NTC_BETA').value = config.NTC_BETA;
-        $('ONEWIRE_BUS').value = config.ONEWIRE_BUS;
-        $('ADC_REQ_CORRECT').checked = config.ADC_REQ_CORRECT;
-        $('ADC_CORRECTION').value = config.ADC_CORRECTION;
-        $('ONEWIRE_BUS').value = config.ONEWIRE_BUS;
-        $('TEMPERATURE_RESOLUTION').value = config.TEMPERATURE_RESOLUTION;
-        $('calibration').value = config.calibration;
-        $('tolerance').value = config.tolerance;
-        $('temp_sensor_type').value = config.temp_sensor_type;
-        togglediv('temp_sensor', config.temp_sensor_type)
-    }
-}
-
-function togglediv(which, value) {
-    if (which === 'wifi_ssid') {
-        if (value) {
-            $('wifi_ssid_list_div').style.display = 'none';
-            $('wifi_custom_ssid_div').style.display = 'flex'
-        }
-        else {
-            $('wifi_ssid_list_div').style.display = 'flex';
-            $('wifi_custom_ssid_div').style.display = 'none'
-        }
-    }
-    if (which === 'change_password') {
-        if (value) {
-            $('nonewpassdiv').style.display = 'none';
-            $('newpassdiv').style.display = 'block';
-            $('confirmpassword').value = "";
-            $('newpassword').value = "";
-            $('oldpassword').value = "";
-        }
-        else {
-            $('nonewpassdiv').style.display = 'block';
-            $('newpassdiv').style.display = 'none';
-        }
-    }
-    if (which === 'temp_sensor') {
-        if (value == 1 || value == 2) {
-            $('ds18-div').style.display = 'none';
-            $('ntc-div').style.display = 'block';
-
-        }
-        else {
-            $('ds18-div').style.display = 'block';
-            $('ntc-div').style.display = 'none';
-        }
-    }
-    if (which === 'cal_div')
-    {
-        if (value) {
-            $('nocal_div').style.display = 'none';
-            $('cal_div').style.display = 'block';
-        }
-        else {
-            $('nocal_div').style.display = 'block';
-            $('cal_div').style.display = 'none';
-        }
-    }
-    if (which === 'upload_service')
-    {
-        if (value == 0) //Gmail
-        {
-            $('nocal_div').style.display = 'none';
-            $('cal_div').style.display = 'block';
-        }
-        else if (value == 1)//Google Drive
-        {
-            $('nocal_div').style.display = 'block';
-            $('cal_div').style.display = 'none';
-        }
-        else if (value == 2)//IFFT
-        {
-            $('nocal_div').style.display = 'block';
-            $('cal_div').style.display = 'none';
-        }
-    }
-}
-function wifi_connect() {
-
-}
-
-function $(name) {
-    return document.getElementById(name);
-}
-
-function send() {
-    //not safe probably.
-    if ($('confirmpassword').value !== $('newpassword').value) {
-        alert('Passwords don\'t match.');
-        return;
-    }
-    var req = '/newpass?n=' + $('newpassword').value + '&o=' + $('oldpassword').value;
-    RequestData(req);
-}
-
-function saveconfig()
-{
-    var url = '/newconfig?config=';
-    url += config.send();
-    RequestData(url);
-
-})==="//##$$
-        ;
 }
 
 void GeneralLog(String message)
@@ -1930,12 +1284,12 @@ void File_Writer(String Filename, String Content, bool append = false, bool useS
     if (!useSPIFFS)
     {
         if (append)
-            _file = SD_MMC.open(Filename, "a");
+            _file = SD.open(Filename, "a");
         else
         {
-            if (SD_MMC.exists(Filename))
-                SD_MMC.remove(Filename);
-            _file = SD_MMC.open(Filename, "w");
+            if (SD.exists(Filename))
+                SD.remove(Filename);
+            _file = SD.open(Filename, "w");
         }
     }
     else
@@ -2038,7 +1392,7 @@ String listLogFiles()
 
     String msg = "files:";
 
-    File root = SD_MMC.open("/Logs");
+    File root = SD.open("/Logs");
     File file = root.openNextFile();
 
     while (file)
@@ -2180,17 +1534,17 @@ void SendLargeFiles(AsyncWebServerRequest *request, String _filename)
         esp_task_wdt_reset();
     }
 
-    AsyncWebServerResponse *response = request->beginResponse(SD_MMC, _filename, getMIME(_filename));
+    AsyncWebServerResponse *response = request->beginResponse(SD, _filename, getMIME(_filename));
     request->send(response);
     xSemaphoreGive(sd_mutex);
     /*  */
     return;
 }
-void getTime()
+void  getTime()
 {
     Serial.println("Syncing Time Online");
     HTTPClient http;
-    http.begin("http://worldtimeapi.org/api/timezone/America/Bahia.txt"); //HTTP
+    http.begin("http://worldtimeapi.org/api/timezone/America/Bahia.txt"); // HTTP
     int httpCode = http.GET();
     // httpCode will be negative on error
     if (httpCode > 0)
@@ -2219,7 +1573,7 @@ void getTime()
                 {
                     setTime(atoi(pch));
                 }
-                //printf("%d: %s\n", i, pch);
+                // printf("%d: %s\n", i, pch);
                 pch = strtok(NULL, ":\n");
             }
             is_time_configured = true;
@@ -2248,20 +1602,20 @@ float readTemperature(bool raw = false)
         return 0;
     float _temp;
 
-    if (Config.temp_sensor_type == 0 || Config.temp_sensor_type == 0) //DS18b20
+    if (Config.temp_sensor_type == 0 || Config.temp_sensor_type == 0) // DS18b20
     {
         DS18->requestTemperatures();
         _temp = DS18->getTempCByIndex(0);
     }
-    else if (Config.temp_sensor_type == 2) //NTC thermopar
+    else if (Config.temp_sensor_type == 2) // NTC thermopar
     {
         float average = 0;
 
-        //These 2 will be #defines
+        // These 2 will be #defines
         int NTC_SAMPLES = 5000;
         int NTC_SERIES_RESISTOR = 1000;
 
-        if (Config.NTC_ENABLE_PIN >= 0)
+        if (Config.NTC_ENABLE_PIN > 0)
             digitalWrite(Config.NTC_ENABLE_PIN, 1);
 
         for (uint16_t i = 0; i < NTC_SAMPLES; i++)
@@ -2269,7 +1623,7 @@ float readTemperature(bool raw = false)
             average += analogRead(Config.NTC_READ_PIN);
             delayMicroseconds(30);
         }
-        if (Config.NTC_ENABLE_PIN >= 0)
+        if (Config.NTC_ENABLE_PIN > 0)
             digitalWrite(Config.NTC_ENABLE_PIN, 0);
 
         average = average / NTC_SAMPLES;
@@ -2303,12 +1657,12 @@ float readTemperature(bool raw = false)
     return (float)_temp;
 }
 
-//most important
+// most important
 void updateTemperatures()
 {
     float _temp = readTemperature();
 
-    //ReadError
+    // ReadError
 
     if (now() >= LastTime + Config.sample_freq)
     {
@@ -2378,7 +1732,7 @@ void updateTemperatures()
         }
     }
 
-    //TODO GREENHOUSE CONTROL
+    // TODO GREENHOUSE CONTROL
     if (currentRamp.running)
     {
         if (now() >= currentRamp.StepsTimes[currentRamp.currentstep])
@@ -2429,8 +1783,8 @@ void updateTemperatures()
         }
         bool oldRelayState = digitalRead(Config.RELAY_PIN);
 
-        //Serial.print(">>>>>>");Serial.println(" _temp < currentRamp.temperatureSteps[currentRamp.currentstep] && oldRelayState");
-        //High Temp
+        // Serial.print(">>>>>>");Serial.println(" _temp < currentRamp.temperatureSteps[currentRamp.currentstep] && oldRelayState");
+        // High Temp
         /*
         Serial.print("old: ");
         Serial.print(oldRelayState);
@@ -2446,7 +1800,7 @@ void updateTemperatures()
             digitalWrite(Config.RELAY_PIN, 0);
             new_relay_state = true;
         }
-        //Low Temp
+        // Low Temp
         else if (_temp < currentRamp.temperatureSteps[currentRamp.currentstep] - Config.tolerance && !oldRelayState)
         {
             digitalWrite(Config.RELAY_PIN, 1);
@@ -2456,7 +1810,7 @@ void updateTemperatures()
         int raw_current = now() - currentRamp.startTime;
         int raw_end = currentRamp.StepsTimes[currentRamp.totalsteps - 1] - currentRamp.startTime;
         byte new_percent = map(raw_current, 0, raw_end, 0, 100);
-        //byte new_percent = map(now() - currentRamp.startTime,0,computedEnd - currentRamp.startTime,0,100);
+        // byte new_percent = map(now() - currentRamp.startTime,0,computedEnd - currentRamp.startTime,0,100);
 
         if (new_percent != currentProg)
         {
@@ -2535,9 +1889,9 @@ void handleReqState(AsyncWebServerRequest *request)
 void handleSetTime(AsyncWebServerRequest *request)
 {
 
-    //prevents override --dont trust clients if u can trust time api
-    // if(is_time_configured)
-    // return;
+    // prevents override --dont trust clients if u can trust time api
+    //  if(is_time_configured)
+    //  return;
 
     if (request->hasArg("time"))
     {
@@ -2566,7 +1920,7 @@ void handleWebServer(AsyncWebServerRequest *request)
     //     return;
     // }
 
-    ///Check if file exists
+    /// Check if file exists
     int a = millis();
     String filename = "/Web";
     String apiname = request->url();
@@ -2694,7 +2048,7 @@ void handleWebServer(AsyncWebServerRequest *request)
         {
             AsyncWebParameter *p = request->getParam(i);
             if (p->isFile())
-            { //p->isPost() is also true
+            { // p->isPost() is also true
                 message += "FILE[";
                 message += p->name();
                 message += "]: ";
@@ -2722,7 +2076,6 @@ void handleWebServer(AsyncWebServerRequest *request)
                 message += ", size: ";
                 message += p->size();
                 message += '\n';
-
             }
             message += " " + request->argName(i) + ": " + request->arg(i) + "\n";
         }
@@ -2756,7 +2109,7 @@ void handleWebServer(AsyncWebServerRequest *request)
     {
         String filename = "/Logs/";
         filename += request->arg("fileName");
-        if (SD_MMC.exists(filename))
+        if (SD.exists(filename))
         {
             SendLargeFiles(request, filename);
         }
@@ -2789,11 +2142,11 @@ void handleWebServer(AsyncWebServerRequest *request)
         String filename = "/Logs/";
         filename += request->arg("fileName");
         String Message = "";
-        if (SD_MMC.exists(filename))
+        if (SD.exists(filename))
         {
             if (filename != "/Logs/General.log")
             {
-                SD_MMC.remove(filename);
+                SD.remove(filename);
                 String logMsg = "File deleted: ";
                 logMsg += filename;
                 logMsg += ".";
@@ -2838,8 +2191,12 @@ void handleWebServer(AsyncWebServerRequest *request)
     }
     else if (apiname == "/systeminfo")
     {
+        bool complete= false;
+        if (request->hasArg("complete"))
+        complete = true;
+
         String msg = "sysinfo:";
-        msg += SysInfo.toString();
+        msg += SysInfo.toString(complete);
         request->send(200, "text/plain", msg);
         if (debug.web)
         {
@@ -2873,13 +2230,13 @@ void handleWebServer(AsyncWebServerRequest *request)
     }
     else if (apiname == "/newcaltest")
     {
-        //new_cal:raw:cal;
+        // new_cal:raw:cal;
         String msg = "new_cal:";
         float temp = readTemperature();
         msg += temp;
         msg += ':';
         if (request->hasArg("cal"))
-        msg += temp + atof(request->arg("cal").c_str());
+            msg += temp + atof(request->arg("cal").c_str());
         AsyncWebServerResponse *res = request->beginResponse(200, "text/plain", msg);
         request->send(res);
 
@@ -2893,9 +2250,23 @@ void handleWebServer(AsyncWebServerRequest *request)
     }
     else if (apiname == "/newconfig")
     {
-        //new_cal:raw:cal;
         if (request->hasArg("config"))
-        Config.fromString(request->arg("config"));
+            Config.fromString(request->arg("config"));
+        if (debug.general)
+        {
+            Serial.print("New Config Recieved:  '");
+            Serial.print(Config.toString());
+            Serial.println("'");
+        }
+
+        if (request->hasArg("reset"))
+        {
+            if (request->arg("reset") == "on")
+            {
+                Serial.println("New Configs Saved, ESP reseting....");
+            }
+        }
+
         AsyncWebServerResponse *res = request->beginResponse(200, "text/plain", "done");
         request->send(res);
 
@@ -2915,7 +2286,7 @@ void handleWebServer(AsyncWebServerRequest *request)
             Serial.println("looking in SD Card");
         }
 
-        if (SD_MMC.exists(filename))
+        if (SD.exists(filename))
         {
             SendLargeFiles(request, filename);
             if (debug.web)
@@ -2926,7 +2297,7 @@ void handleWebServer(AsyncWebServerRequest *request)
             }
             return;
         }
-        else if (SD_MMC.exists(filename + ".html"))
+        else if (SD.exists(filename + ".html"))
         {
             SendLargeFiles(request, filename + ".html");
             if (debug.web)
@@ -2937,7 +2308,7 @@ void handleWebServer(AsyncWebServerRequest *request)
             }
             return;
         }
-        else if (SD_MMC.exists(filename + ".css"))
+        else if (SD.exists(filename + ".css"))
         {
             SendLargeFiles(request, filename + ".css");
             if (debug.web)
@@ -2948,7 +2319,7 @@ void handleWebServer(AsyncWebServerRequest *request)
             }
             return;
         }
-        else if (SD_MMC.exists(filename + ".js"))
+        else if (SD.exists(filename + ".js"))
         {
             SendLargeFiles(request, filename + ".js");
             if (debug.web)
@@ -2959,7 +2330,7 @@ void handleWebServer(AsyncWebServerRequest *request)
             }
             return;
         }
-        else if (SD_MMC.exists(apiname))
+        else if (SD.exists(apiname))
         {
             SendLargeFiles(request, apiname);
             if (debug.web)
@@ -3043,7 +2414,7 @@ public:
 
     bool canHandle(AsyncWebServerRequest *request)
     {
-        //request->addInterestingHeader("ANY");
+        // request->addInterestingHeader("ANY");
         return true;
     }
 
@@ -3076,21 +2447,21 @@ void startOTA()
 {
     String type;
     is_updating = true;
-    //caso a atualização esteja sendo gravada na memória flash externa, então informa "flash"
+    // caso a atualização esteja sendo gravada na memória flash externa, então informa "flash"
     SPIFFS.end();
     if (ArduinoOTA.getCommand() == 0)
         type = "flash";
-    else                     //caso a atualização seja feita pela memória interna (file system), então informa "filesystem"
+    else                     // caso a atualização seja feita pela memória interna (file system), então informa "filesystem"
         type = "filesystem"; // U_SPIFFS
-    //exibe mensagem junto ao tipo de gravação
+    // exibe mensagem junto ao tipo de gravação
     Serial.println("Start updating " + type);
 }
-//exibe mensagem
+// exibe mensagem
 void endOTA()
 {
     Serial.println("\nEnd");
 }
-//exibe progresso em porcentagem
+// exibe progresso em porcentagem
 void progressOTA(unsigned int progress, unsigned int total)
 {
     update_progress = (float)progress / total * 100;
@@ -3117,7 +2488,7 @@ void errorOTA(ota_error_t error)
 
 void listAllFiles(String dir = "/", bool SD_card = false, byte treesize = 0)
 {
-    ///SPIFFS mode
+    /// SPIFFS mode
     if (!SD_card)
     {
         // List all available files (if any) in the SPI Flash File System
@@ -3155,7 +2526,7 @@ void listAllFiles(String dir = "/", bool SD_card = false, byte treesize = 0)
         root.close();
         file.close();
     }
-    //SD card mode
+    // SD card mode
     else if (SD_card)
     {
         if (!is_SD_Mount)
@@ -3166,16 +2537,16 @@ void listAllFiles(String dir = "/", bool SD_card = false, byte treesize = 0)
         if (treesize == 0)
         {
             Serial.print("Used Bytes: ");
-            Serial.print(SD_MMC.usedBytes());
+            Serial.print(SD.usedBytes());
             Serial.print("-----Total Bytes: ");
-            Serial.print(SD_MMC.totalBytes());
+            Serial.print(SD.totalBytes());
             Serial.print("-----Used: ");
-            Serial.print(map(SD_MMC.usedBytes(), 0, SD_MMC.totalBytes(), 0, 100));
+            Serial.print(map(SD.usedBytes(), 0, SD.totalBytes(), 0, 100));
             Serial.println("%");
             Serial.print("Listing files in: ");
             Serial.println(dir);
         }
-        File root = SD_MMC.open(dir);
+        File root = SD.open(dir);
         File file = root.openNextFile();
         while (file)
         {
@@ -3196,7 +2567,7 @@ void listAllFiles(String dir = "/", bool SD_card = false, byte treesize = 0)
         root.close();
         file.close();
         // if (root.path() == "/Logs")
-        // SD_MMC.remove(file.path());
+        // SD.remove(file.path());
     }
 }
 
@@ -3213,7 +2584,7 @@ void loadConfig()
     }
     if (is_SD_Mount)
     {
-        if (SD_MMC.exists("/config.cfg"))
+        if (SD.exists("/config.cfg"))
             mode += 0x20;
         else
             mode += 0x10;
@@ -3241,7 +2612,7 @@ void loadConfig()
     else if (mode == 0x21 || mode == 0x20)
     {
         Serial.print("SPIFFS config not found, loading from SD.");
-        String _setting = SD_MMC.open("/config.cfg").readString();
+        String _setting = SD.open("/config.cfg").readString();
         if (mode == 0x21)
         {
             Serial.print("....Making a copy of SD card's one into SPIFFS....");
@@ -3254,7 +2625,7 @@ void loadConfig()
     else if (mode == 0x22)
     {
         Serial.print("Found Config.cfg files in both SD and SPIFFS. Loading from SD");
-        Config.LoadValidated(SD_MMC.open("/config.cfg").readString()) ? Serial.println(". Sucess!") : Serial.println(". Failed Checksum.");
+        Config.LoadValidated(SD.open("/config.cfg").readString()) ? Serial.println(". Sucess!") : Serial.println(". Failed Checksum.");
     }
     else if (mode == 0x12 || mode == 0x02)
     {
@@ -3325,7 +2696,7 @@ void clearDir(String dir)
 
     Serial.print("Deleting all files in: ");
     Serial.print(dir);
-    File root = SD_MMC.open(dir);
+    File root = SD.open(dir);
     File file = root.openNextFile();
     while (file)
     {
@@ -3334,7 +2705,7 @@ void clearDir(String dir)
         if (path != "/Logs/General.log")
             ;
         {
-            SD_MMC.remove(file.path());
+            SD.remove(file.path());
             Serial.print("Deleting ");
             Serial.println(file.path());
         }
@@ -3368,31 +2739,15 @@ void StandardTesting()
     StartRamp();
 }
 
-void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final){
-  if(!index){
-    Serial.print((String)"UploadStart: ");
-Serial.println(filename);
-  }
-  for(size_t i=0; i<len; i++){
-    Serial.write(data[i]);
-  }
-  if(final){
-    Serial.print((String)"UploadEnd: ");
-    Serial.print(filename );
-    Serial.print(",");
-    Serial.print(index);
-    Serial.print(",");
-    Serial.println(len); 
-  }
-}
 
 void setup()
 {
 
-    Serial.begin(115200); //Start Serial
+    Serial.begin(115200); // Start Serial
 
-    //Start SD Card
-    if (SD_MMC.begin("/sd", true, false))
+    // Start SD Card
+    SPI.begin(14,2,15,13);
+    if (!SD.begin(13,SPI))
         is_SD_Mount = true;
 
     int oldTime = millis();
@@ -3402,12 +2757,13 @@ void setup()
     else
     {
         Serial.print("SD Card mounted. Size: ");
-        Serial.print(SD_MMC.cardSize() / 1024 / 1024);
+        Serial.print(SD.cardSize() / 1024 / 1024);
         Serial.print("Mb.  Used: ");
-        Serial.print((float)(SD_MMC.usedBytes()) / SD_MMC.totalBytes() * 100);
+        Serial.print((float)(SD.usedBytes()) / SD.totalBytes() * 100);
         Serial.println("%");
     }
-    if (!SPIFFS.begin()) //Start SPIFFS
+
+    if (!SPIFFS.begin()) // Start SPIFFS
     {
         Serial.println("Error initializing SPIFFS");
         is_SPIFFSS_Mount = false;
@@ -3422,14 +2778,20 @@ void setup()
         is_SPIFFSS_Mount = true;
     }
 
+    // Loads Settings string from /Config.cfg
     loadConfig();
 
+    // TODO start this elsewhere and call it here? maybe don't start
+    // if using ntc sensors.
     oneWire = new OneWire(Config.ONEWIRE_BUS);
     DS18 = new DallasTemperature(oneWire);
+    DS18->setResolution(Config.TEMPERATURE_RESOLUTION);
+    DS18->begin();
 
     adcCorrector.setup();
     adcCorrector.fromString(Config.ADC_CORRECTION);
-    //Initializing Arrays and Data Structs.
+
+    // Initializing Arrays and Data Structs.
     for (int i = 0; i < HISTORY_SIZE; i++)
     {
         DS18Temp[i] = DS18Time[i] = 0;
@@ -3437,15 +2799,52 @@ void setup()
     currentRamp.reset();
     lastRamp.reset();
 
-    //Start SPIFFS
-    pinMode(Config.RELAY_PIN, OUTPUT); //Set the Relay pin to output
+    // Start SPIFFS
+    pinMode(Config.RELAY_PIN, OUTPUT); // Set the Relay pin to output
 
-    WiFi.mode(WIFI_STA); //WiFi Station Mode
+    WiFi.mode(WIFI_STA); // WiFi Station Mode
+
+    // Handles static IP
+    if (Config.use_static_ip)
+    {
+        IPAddress staticIP = IPAddress();
+        if (staticIP.fromString(Config.static_ip))
+        {
+
+            // Google dns
+            IPAddress dns1(8, 8, 8, 8);
+            IPAddress dns2(8, 8, 4, 4);
+            IPAddress subnet(255, 255, 255, 0);
+
+            String gateway_string = Config.static_ip.substring(0, Config.static_ip.lastIndexOf('.') + 1);
+            gateway_string += '1';
+            IPAddress gateway = IPAddress();
+            // Gateway will be the first address of the subnet of the IP provided.
+            if (gateway.fromString(gateway_string))
+            {
+                if (WiFi.config(staticIP, gateway, subnet, dns1, dns2))
+                    Serial.println("Static IP enaable");
+                else
+                    Serial.println("Error on Wifi.config()"); //,,dns1,dns2);
+            }
+            else
+                Serial.println("Gateway ipaddress error, disabling static ip");
+        }
+        else
+        {
+            // If the static ip is not valid disable it.
+            Config.static_ip = "";
+            Config.use_static_ip = false;
+        }
+    }
+
+    // Starts Wifi
     WiFi.begin(Config.WIFI_SSID.c_str(), Config.WIFI_PASSWORD.c_str());
 
-    bool createAp = false;
+    bool createAp = false; // flag for creating an AP in case we can't connect to wifi
+    bool beauty = true;    // Esthetics for Serial.print();
 
-    bool beauty = true;
+    // Try to connect to WiFi
     while (WiFi.status() != WL_CONNECTED && !createAp)
     {
         if (millis() % 100 == 0 && beauty)
@@ -3460,88 +2859,56 @@ void setup()
 
         if (millis() - oldTime > 14999)
         {
-            Serial.printf("\nNetwork '%s' not found.\n", Config.WIFI_SSID);
+            Serial.printf("\nNetwork '%s' not found.\n", Config.WIFI_SSID.c_str());
             createAp = true;
         }
     }
 
-    if (createAp)
+    if (createAp || Config.forceAP)
     {
         WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(Config.WIFI_AP_SSID.c_str(), Config.WIFI_AP_PASSWORD.c_str());
         // dnsServer.start(53, "*", WiFi.softAPIP());
         Serial.println("");
-        Serial.print("Creating WiFi Ap.SSID:  ");
+        Serial.print("Creating WiFi Ap.\n ---SSID:  ");
         Serial.println(Config.WIFI_AP_SSID);
-        Serial.print("IP address: ");
+        Serial.print(" --IP address: ");
         Serial.println(WiFi.softAPIP());
     }
     else
     {
-
-        Serial.println();
         Serial.print("Connected to ");
         Serial.println(Config.WIFI_SSID);
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP());
     }
 
-    // server.on("/", handleRoot);
-    // server.onNotFound(handleWebServer);
-    // server.on("/doPage", handleDoPage);
-    // server.on("/do", handleNewRamp);
-
-    // server.on("/Common.css", handleCSS);
-    // server.on("/requpdate", handleRequestUpdate);
-    // server.on("/reqhist", handleRequestHist);
-    // server.on("/CommonScript.js", handleCommonJs);
-    // server.on("/FileSaver.js", handleFileSaverjs);
-    // server.on("/favicon.ico", handlefav);
-    // server.on("/reqstate", handleReqState);
-    // server.on("/start", handleStart);
-    // server.on("/stop", handleStop);
-    // server.on("/settime", handleSetTime);
-
-    // server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER); //only when requested from AP
-    //more handlers...server.begin();
-
-    //Start HTTP Server
-    server.addHandler(new EstufaRequestHandler()).setFilter(ON_STA_FILTER);
-
-    if (MDNS.begin(Config.host_name.c_str())) //host_name.local/
+    // Start MDNS Service
+    if (MDNS.begin(Config.host_name.c_str())) // host_name.local/
     {
         Serial.println("MDNS responder started");
     }
 
-    // ArduinoOTA.setPassword("admin");
-    // Password can be set with it's md5 value as well
-    // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
-    // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
-    // ArduinoOTA.setHostname("ESTUFA");
+    // Start OTA service
+    ArduinoOTA.setHostname(Config.host_name.c_str());
     ArduinoOTA.onStart(startOTA);
     ArduinoOTA.onEnd(endOTA);
     ArduinoOTA.onProgress(progressOTA);
     ArduinoOTA.onError(errorOTA);
     ArduinoOTA.begin();
-server.onFileUpload(handleUpload);
 
     GeneralLog("Booted");
     getTime();
-    DS18->begin();
+
     sd_mutex = xSemaphoreCreateCounting(3, 3);
+
     if (sd_mutex == NULL)
     {
         Serial.println("sd mutex = ! NULL MUTEX !");
     }
-    get_ap_mutex = xSemaphoreCreateBinary();
 
-    if (get_ap_mutex == NULL)
-    {
-        Serial.println("get ap mutex = ! NULL MUTEX !");
-    }
-    File_Writer("/Web/test.html", GetPage());
-    File_Writer("/Web/Settings.js", GetPage2());
-
+    // Start HTTP Server
+    server.addHandler(new EstufaRequestHandler()).setFilter(ON_STA_FILTER);
     server.begin();
     Serial.println("HTTP server started");
 
@@ -3563,26 +2930,26 @@ server.onFileUpload(handleUpload);
     Serial.println("ms");
 
     SysInfo.print(true);
-    #ifdef DEBUGWEB
+
+#ifdef DEBUGWEB
     debug.web = true;
-    #endif
-    #ifdef DEBUGGENERAL
+#endif
+#ifdef DEBUGGENERAL
     debug.general = true;
-    #endif
-    #ifdef DEBUGLOG
+#endif
+#ifdef DEBUGLOG
     debug.log = true;
-    #endif
-    #ifdef DEBUGTEMP
+#endif
+#ifdef DEBUGTEMP
     debug.temp = true;
-    #endif
-    #ifdef DEBUGRAMP
+#endif
+#ifdef DEBUGRAMP
     debug.ramp = true;
-    #endif
+#endif
 }
 
 void loop()
 {
-
     // oldLoopMillis = millis();
     ArduinoOTA.handle();
     // request->handleClient();
@@ -3601,8 +2968,8 @@ void loop()
             {
                 s += c;
 
-                //Serial.print((int)c);
-                //Serial.print('.');
+                // Serial.print((int)c);
+                // Serial.print('.');
             }
         }
         if (s != "")
@@ -3612,7 +2979,7 @@ void loop()
         }
         if (s == "web")
         {
-            listDir(SD_MMC, "/Web");
+            listDir(SD, "/Web");
         }
         else if (s == "debug web")
         {
@@ -3673,9 +3040,9 @@ void loop()
         {
             Cache.setup();
         }
-         else if (s == "config")
+        else if (s == "config")
         {
-         Serial.println(Config.toString());
+            Serial.println(Config.toString());
         }
         else if (s == "led")
         {
@@ -3689,15 +3056,15 @@ void loop()
         {
             Serial.print(WiFi.scanComplete());
         }
-        else if (SD_MMC.exists(s))
+        else if (SD.exists(s))
         {
             Serial.print("FILE: ");
             Serial.println(s);
             Serial.println("-------------");
-            if (SD_MMC.open(s).isDirectory())
+            if (SD.open(s).isDirectory())
                 listAllFiles(s, true);
             else
-                Serial.println(SD_MMC.open(s).readString());
+                Serial.println(SD.open(s).readString());
             Serial.println("-------------");
         }
     }
