@@ -1,10 +1,12 @@
 RequestData('/loadconfig');
+RequestData('/systeminfo?complete=true');
 RequestData('/reqwifisearch', 10000);
 var ReqInfo = setInterval(() => { RequestData('/systeminfo') }, 1500);
 var CalTimer;//Placeholder for the setInterval below;
 var ESP_Connected = true;
 var failedRequests = 0;
-var wifiAPs = [, ,]
+var wifiAPs = []
+
 const sysinfo = new InfoCreator();
 const config = new Settings();
 
@@ -25,7 +27,8 @@ const maxCheck = {
     NTC_ENABLE_PIN: [-1, 39],
     NTC_BETA: [1, 65535],
 
-    backup_freq: [1, 4294967295]
+    backup_freq: [0, 4294967295],
+    auto_upload_freq: [0, 4294967295]
 }
 
 
@@ -112,7 +115,6 @@ function Settings() {
 
     //Web Site Credentials
     this.www_username = "";
-    this.www_password = "";
 
     //Wifi Credentials
     this.WIFI_SSID = "";
@@ -130,6 +132,8 @@ function Settings() {
     this.UploadServiceType = 0;
     this.UploadLogin = "";
     this.UploadPassword = "";
+    this.auto_upload = false;
+    this.auto_upload_freq = 0;
 
     //Sample rate for logging
     this.sample_freq = 0;
@@ -198,8 +202,6 @@ function Settings() {
                         this.WIFI_AP_PASSWORD = value;
                     else if (variable == "www_username")
                         this.www_username = value;
-                    else if (variable == "www_password")
-                        this.www_password = value;
                     else if (variable == "TEMPERATURE_RESOLUTION")
                         this.TEMPERATURE_RESOLUTION = parseInt(value);
                     else if (variable == "sample_freq")
@@ -244,6 +246,14 @@ function Settings() {
                         this.NTC_ENABLE_PIN = parseInt(value);
                     else if (variable == "NTC_BETA")
                         this.NTC_BETA = parseInt(value);
+                    else if (variable == "auto_upload")
+                        this.auto_upload = value == "1" ? true : false;
+                    else if (variable == "auto_upload_freq")
+                        this.auto_upload_freq = parseInt(value);
+                    else if (variable == "ADC_REQ_CORRECT")
+                        this.ADC_REQ_CORRECT = value == "1" ? true : false;
+                    else if (variable == "ADC_CORRECTION")
+                        this.ADC_CORRECTION = value;
 
                     value = "";
                     variable = "";
@@ -272,16 +282,10 @@ function Settings() {
         }
         message += ",www_username=";
         message += this.www_username;
-        if (complete) {
-            message += ",www_password=";
-            message += this.www_password;
-        }
         message += ",WIFI_AP_SSID=";
         message += this.WIFI_AP_SSID;
-        if (complete) {
-            message += ",WIFI_AP_PASSWORD=";
-            message += this.WIFI_AP_PASSWORD;
-        }
+        message += ",WIFI_AP_PASSWORD=";
+        message += this.WIFI_AP_PASSWORD;
         message += ",use_static_ip=";
         message += this.use_static_ip;
         message += ",static_ip=";
@@ -324,6 +328,16 @@ function Settings() {
         message += this.NTC_ENABLE_PIN;
         message += ",NTC_BETA=";
         message += this.NTC_BETA;
+        message += ",auto_upload=";
+        message += this.auto_upload;
+        message += ",auto_upload_freq=";
+        message += this.auto_upload_freq;
+        message += ",ADC_REQ_CORRECT=";
+        message += this.ADC_REQ_CORRECT;
+        message += ",ADC_CORRECTION=";
+        message += this.ADC_CORRECTION;
+
+
         message += ",;";
 
         return message;
@@ -345,23 +359,21 @@ function ParseNewData(incomeString) {
             var _args = incomeString.split(';')[i].split(':');
             if (_args[0] == 'config') {
                 config.load(_args[1]);
+                draw('all');
             }
-
             if (_args[0] == 'sysinfo') {
                 sysinfo.load(_args[1]);
 
             }
             if (_args[0] == 'wifiAP') {
                 var aps = _args[1].split(',');
-                wifiAPs = [, ,];
-                for (var i = 0; i < aps.length - 1; aps++) {
+                wifiAPs = [];
+                for (var i = 0; i < aps.length - 1; i++) {
                     if (aps[i] !== '') {
-                        wifiAPs[i][0] = aps[i].split('=')[0];
-                        wifiAPs[i][1] = aps[i].split('=')[1];
-
+                        wifiAPs.push (aps[i].split('='));
                     }
                 }
-
+                GenWifis();
             }
             if (_args[0] == 'cal_temp') {
                 if (!isNaN((parseFloat(_args[1]))))
@@ -370,6 +382,12 @@ function ParseNewData(incomeString) {
                     setnew('cal_temp', _args[2]);
             }
             if (_args[0] == 'error') {
+                alert(_args[1]);
+            }
+            if (_args[0] == 'connect_result') {
+                enable(config.WIFI_SSID, true);
+                enable(config.WIFI_PASSWORD, true);
+                enable('wifi_custom_ssid', true);
                 alert(_args[1]);
             }
 
@@ -439,18 +457,28 @@ window.onload = function () {
     generateCircle('cal_sensor', 'Calib:', 0, 'cal_temp', '#d4ebd3', 'darkred', 'darkred', '&deg;C', 'map 20 80 0 100');
     setLabelSize('cal_temp', '45px');
     setLabelSize('raw_temp', '45px');
-    setnew('raw_temp', '0');
     setnewangle('raw_temp', 120);
-    setnew('cal_temp', '0');
     setnewangle('cal_temp', 120);
     setnewangle('ram', 120);
     setnewangle('internalTemp', 120);
     setnewangle('sdcard', 120);
     setnewangle('SPIFFS', 120);
-
-    ParseNewData(test);
     draw('all');
 
+
+}
+
+function goodbye(e) {
+    if(!e) e = window.event;
+    //e.cancelBubble is supported by IE - this will kill the bubbling process.
+    e.cancelBubble = true;
+    e.returnValue = 'You sure you want to leave?'; //This is displayed on the dialog
+
+    //e.stopPropagation works in Firefox.
+    if (e.stopPropagation) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
 }
 
 function changeESPConnected(isESPConnected) {
@@ -516,7 +544,7 @@ function handleSettingsChanges(sender, area, type) {
     var value = parseFloat(sender.value);
 
     console.log(sender.id, value, maxCheck[sender.id], inRange(sender.id, value))
-  
+
     if (!inRange(sender.id, value)) {
         var oldclass = $(sender.id).className;
         $(sender.id).className = oldclass + " redbk";
@@ -524,7 +552,7 @@ function handleSettingsChanges(sender, area, type) {
             $(sender.id).className = oldclass;
         }, 4500)
 
-        alert('!Wrong Value!\nThe value of: '+sender.id + '\nshould be between: ' + maxCheck[sender.id][0] + ' and ' + maxCheck[sender.id][1] +'.');
+        alert('!Wrong Value!\nThe value of: ' + sender.id + '\nshould be between: ' + maxCheck[sender.id][0] + ' and ' + maxCheck[sender.id][1] + '.');
         sender.value = config[sender.id];
         return;
     }
@@ -557,7 +585,7 @@ function draw(params) {
         draw('upload');
     }
     if (params == 'wifi') {
-        $('wifi_ssid').value = config.WIFI_SSID;//custom ssid
+        $('wifi_custom_ssid').value = config.WIFI_SSID;//custom ssid
         $('WIFI_PASSWORD').value = config.WIFI_PASSWORD;
         $('WIFI_AP_SSID').value = config.WIFI_AP_SSID;
         $('WIFI_AP_PASSWORD').value = config.WIFI_AP_PASSWORD;
@@ -566,7 +594,6 @@ function draw(params) {
 
         enable('ip_address', config.use_static_ip);
         togglediv('wifi_ssid', $('wifi_custom_ssid').checked);
-        //enable()
 
     }
 
@@ -585,14 +612,17 @@ function draw(params) {
             $('lastbackup').innerText = new Date(config.lastbackup * 1000).toDateString();
         else
             $('lastbackup').innerText = 'Never';
+
+        enable('backup_freq', config.enable_backup);
     }
     if (params == 'upload') {
         $('enable_upload').checked = config.enable_upload;
+        $('auto_upload').checked = config.auto_upload;
+        $('auto_upload_freq').value = config.auto_upload_freq;
         $('UploadServiceType').value = config.UploadServiceType;
         $('UploadLogin').value = config.UploadLogin;
         $('UploadPassword').value = config.UploadPassword;
         togglediv('upload_service', config.UploadServiceType);
-        //add auto upload
     }
     if (params == 'sensors') {
         $('NTC_READ_PIN').value = config.NTC_READ_PIN;
@@ -608,6 +638,7 @@ function draw(params) {
         $('calibration').value = config.calibration;
         $('tolerance').value = config.tolerance;
         $('temp_sensor_type').value = config.temp_sensor_type;
+        enable('ADC_CORRECTION',config.ADC_REQ_CORRECT);
         togglediv('temp_sensor', config.temp_sensor_type)
     }
 }
@@ -651,6 +682,7 @@ function togglediv(which, value) {
         if (value) {
             $('nocal_div').style.display = 'none';
             $('cal_div').style.display = 'block';
+            SetCalTimer(true);
         }
         else {
             $('nocal_div').style.display = 'block';
@@ -660,18 +692,22 @@ function togglediv(which, value) {
     if (which === 'upload_service') {
         if (value == 0) //Gmail
         {
-            $('nocal_div').style.display = 'none';
-            $('cal_div').style.display = 'block';
+            $('UploadLoginDiv').style.display = 'flex';
+            $('UploadPasswordDiv').style.display = 'none';
+            $('UploadLoginLabel').innerText = 'Your Email:';
+
         }
         else if (value == 1)//Google Drive
         {
-            $('nocal_div').style.display = 'block';
-            $('cal_div').style.display = 'none';
+            $('UploadLoginDiv').style.display = 'flex';
+            $('UploadPasswordDiv').style.display = 'none';
+            $('UploadLoginLabel').innerText = 'Script ID:';
         }
-        else if (value == 2)//IFFT
+        else if (value == 2)//IFTTT
         {
-            $('nocal_div').style.display = 'block';
-            $('cal_div').style.display = 'none';
+            $('UploadLoginDiv').style.display = 'flex';
+            $('UploadPasswordDiv').style.display = 'none';
+            $('UploadLoginLabel').innerText = 'Applet Key:';
         }
     }
 }
@@ -683,7 +719,7 @@ function $(name) {
     return document.getElementById(name);
 }
 
-function send() {
+function changePassword() {
     //not safe probably.
     if ($('confirmpassword').value !== $('newpassword').value) {
         alert('Passwords don\'t match.');
@@ -693,9 +729,85 @@ function send() {
     RequestData(req);
 }
 
+function Connect() {
+    var url = '/connect?ssid=' + config.WIFI_SSID + '&pass=' + config.WIFI_PASSWORD;
+    enable('wifi_dropdownBox', false);
+    enable('WIFI_PASSWORD', false);
+    enable('wifi_custom_ssid', false);
+
+    alert('Trying to connect to: ' + config.WIFI_SSID +' ,this can take a few seconds.')
+    RequestData(url);
+
+}
+
 function saveconfig() {
-    var url = '/newconfig?config=';
+    var url = '/newconfig?'
+    url+='restart=' + $('restartaftersave').checked + '&';
+    url += 'config=';
     url += config.send();
     RequestData(url);
 
 }
+
+function GenWifis() {
+    innerhtml = '';
+
+   for (let index = 0; index < wifiAPs.length; index++) 
+   {
+       const WifiAp = wifiAPs[index]; 
+        innerhtml += '<option value = "'+WifiAp[0]+'">'+ wifistr(WifiAp[1]) + '  ' + WifiAp[0]+'</option>\n'     
+   }
+
+
+    $('wifi_dropdownBox').innerHTML = innerhtml;
+    $('wifi_dropdownBox').value = config.WIFI_SSID;
+}
+
+function wifistr(rssi) {
+    str  =parseRSSI(rssi);
+    var s = '';
+    var good = '\u25CF'
+    var bad = '\u25CB'
+    for (var i = 0; i < 3 ;i++)
+    {
+        if (i<str)
+        s = s + good;
+        else
+        s = s+bad;
+    }
+
+    return s;
+    
+}
+function parseRSSI(rssi) {
+    if ( rssi > -45)
+    return 3 ///good  > -45
+    else if (rssi > -70 )
+    return 2 ///medium -70 to -45
+    else if (rssi > -85 )
+    return 1 ///poor -85 to -70
+
+    return 0 ///very poor < -85
+}
+
+
+function validateCalibration() {
+    var req = '/newconfig?config=calibration=';
+    req += config.calibration;
+    req+= ',';
+    RequestData(req,5000);
+    SetCalTimer(false);
+}
+/*
+/newpass n,o
+/connect ---- connect_result
+/stop
+/start
+/newconfig restart
+
+
+
+
+
+
+*/
