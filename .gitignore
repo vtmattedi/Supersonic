@@ -1,7 +1,12 @@
 .pio/
 .vscode/
-.src/[BACKUP]/
+/src/[BACKUP]/
 .test/
 ./src/Estufa Web Page/test.html
 /src/SDWriter.txt
 /include/WifiCred.h
+# Private credentials and local configuration
+**/WifiCred.h
+.env
+.env.*
+!.env.example
