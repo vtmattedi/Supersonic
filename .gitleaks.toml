@@ -1,0 +1,12 @@
+title = "Supersonic secret detection"
+
+[extend]
+useDefault = true
+
+# Device passwords may have too little entropy for the generic API-key rules.
+[[rules]]
+id = "supersonic-hardcoded-password"
+description = "Hardcoded firmware password"
+regex = '''(?i)\b(?:www_password|WIFI_PASSWORD|WIFI_AP_PASSWORD|WIFIPASSWD|WEB_PASSWORD|DEVICE_AP_PASSWORD)\s*(?:=|\s)\s*["']([^"'\r\n]+)["']'''
+secretGroup = 1
+entropy = 0
