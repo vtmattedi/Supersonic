@@ -10,3 +10,11 @@ description = "Hardcoded firmware password"
 regex = '''(?i)\b(?:www_password|WIFI_PASSWORD|WIFI_AP_PASSWORD|WIFIPASSWD|WEB_PASSWORD|DEVICE_AP_PASSWORD)\s*(?:=|\s)\s*["']([^"'\r\n]+)["']'''
 secretGroup = 1
 entropy = 0
+
+# Serialized settings fixtures can also expose passwords inside longer strings.
+[[rules]]
+id = "supersonic-serialized-password"
+description = "Password embedded in serialized device settings"
+regex = '''(?i)(?:config:|,)(?:www_password|WIFI_PASSWORD|WIFI_AP_PASSWORD|WIFIPASSWD|WEB_PASSWORD|DEVICE_AP_PASSWORD)=([^"',;\s]+)'''
+secretGroup = 1
+entropy = 0
