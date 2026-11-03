@@ -24,7 +24,7 @@
 //#include "SD.h"
 #include "SD.h"
 #include "esp_task_wdt.h"
-#include <C:\Users\Vity1\Documents\PlatformIO\Projects\Estufa_WebPage\include\WifiCred.h>
+#include "Credentials.h"
 #define DEBUGWEB
 // #define DEBUGLOG
 #define DEBUGGENERAL
@@ -105,15 +105,15 @@ struct Settings
     byte TEMPERATURE_RESOLUTION = 9;
 
     // Web Site Credentials
-    String www_username = "admin";
-    String www_password = "admin";
+    String www_username = WEB_USERNAME;
+    String www_password = WEB_PASSWORD;
 
     // Wifi Credentials
     String WIFI_SSID = WIFISSID;
     String WIFI_PASSWORD = WIFIPASSWD;
     /*missing*/ bool forceAP = false;
     String WIFI_AP_SSID = "ESP32";
-    String WIFI_AP_PASSWORD = "ESP32ESP32";
+    String WIFI_AP_PASSWORD = DEVICE_AP_PASSWORD;
 
     bool use_static_ip = false;
     String static_ip = "";
@@ -262,11 +262,11 @@ struct Settings
     {
         tolerance = 0.5;
         TEMPERATURE_RESOLUTION = 9;
-        www_username = "admin";
-        www_password = "admin";
+        www_username = WEB_USERNAME;
+        www_password = WEB_PASSWORD;
         sample_freq = 1;
-        WIFI_SSID = "MCarvalho";
-        WIFI_PASSWORD = "salvador";
+        WIFI_SSID = WIFISSID;
+        WIFI_PASSWORD = WIFIPASSWD;
     }
 
     // parse new values from a string.
